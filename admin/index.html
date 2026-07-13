@@ -326,7 +326,9 @@ const IC = {
   eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
   task:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="m8.5 13.5 2.5 2.5 4.5-4.5"/>',
   book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-2.5"/>',
-  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>'
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+  map:'<path d="M9 3 3 5.5v15L9 18l6 3 6-2.5v-15L15 6 9 3z"/><path d="M9 3v15"/><path d="M15 6v15"/>',
+  meter:'<path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 15l4.5-3"/><circle cx="12" cy="15" r="1.3"/><path d="M4.5 15H6M18 15h1.5M12 7.2v1.3"/>'
 };
 function ic(name, cls){ return '<svg class="ic '+(cls||'')+'" viewBox="0 0 24 24" aria-hidden="true">'+(IC[name]||'')+'</svg>'; }
 document.querySelectorAll('[data-ic]').forEach(n => { n.innerHTML = ic(n.dataset.ic) + n.innerHTML.replace(/^/,''); });
@@ -348,19 +350,23 @@ function tipHide(){ $('#tip').classList.remove('on'); }
 /* ---------- roles & auth (R12) ---------- */
 const ROLES = ['EnvisionWare Support','Library Admin','Branch Manager','Staff'];
 const VIEWS = [
-  {id:'dashboard', label:'Dashboard',   icon:'dashboard'},
-  {id:'insights',  label:'AI Insights', icon:'bulb'},
-  {id:'content',   label:'Content',     icon:'file'},
-  {id:'modules',   label:'Modules',     icon:'blocks'},
-  {id:'qrcodes',   label:'QR Codes',    icon:'qr'},
-  {id:'branding',  label:'Branding',    icon:'palette'},
-  {id:'users',     label:'Users & SSO', icon:'users'},
-  {id:'alerts',    label:'Alerts',      icon:'bell'}
+  {id:'dashboard',   label:'Dashboard',   icon:'dashboard'},
+  {id:'insights',    label:'AI Insights', icon:'bulb'},
+  {id:'content',     label:'Content',     icon:'file'},
+  {id:'wayfinding',  label:'Wayfinding',  icon:'map'},
+  {id:'modules',     label:'Modules',     icon:'blocks'},
+  {id:'qrcodes',     label:'QR Codes',    icon:'qr'},
+  {id:'branding',    label:'Branding',    icon:'palette'},
+  {id:'users',       label:'Users & SSO', icon:'users'},
+  {id:'aiusage',     label:'AI Usage',    icon:'meter'},
+  {id:'alerts',      label:'Alerts',      icon:'bell'}
 ];
+// aiusage = EnvisionWare-staff-only cost visibility (hidden from library roles, R12).
+const EW_ONLY = new Set(['aiusage']);
 const ACCESS = {
   'EnvisionWare Support': new Set(VIEWS.map(v=>v.id)),
-  'Library Admin':        new Set(VIEWS.map(v=>v.id)),
-  'Branch Manager':       new Set(['dashboard','insights','content','qrcodes','alerts']),
+  'Library Admin':        new Set(VIEWS.map(v=>v.id).filter(id=>!EW_ONLY.has(id))),
+  'Branch Manager':       new Set(['dashboard','insights','content','wayfinding','qrcodes','alerts']),
   'Staff':                new Set(['dashboard','alerts'])
 };
 let role = sessionStorage.getItem('piq_admin_role') || null;
@@ -388,7 +394,10 @@ $('#signOut').onclick = () => { sessionStorage.removeItem('piq_admin_role'); loc
 function renderNav(){
   $('#navList').innerHTML = VIEWS.map(v => {
     const allowed = ACCESS[role].has(v.id);
-    if(!allowed) return '<div class="navitem locked" title="Not available to '+esc(role)+' (R12 role gating)">'+ic(v.icon)+esc(v.label)+'<span class="lockic">'+ic('lock')+'</span></div>';
+    if(!allowed){
+      if(EW_ONLY.has(v.id)) return ''; // EnvisionWare-staff-only — fully hidden from library roles
+      return '<div class="navitem locked" title="Not available to '+esc(role)+' (R12 role gating)">'+ic(v.icon)+esc(v.label)+'<span class="lockic">'+ic('lock')+'</span></div>';
+    }
     return '<button class="navitem'+(view===v.id?' active':'')+'" data-v="'+v.id+'">'+ic(v.icon)+esc(v.label)+'</button>';
   }).join('');
   document.querySelectorAll('.navitem[data-v]').forEach(b => b.onclick = () => { view=b.dataset.v; $('#sidenav').classList.remove('open'); render(); });
@@ -400,6 +409,12 @@ function loadEvents(){ try{ const s=JSON.parse(localStorage.getItem(EV_KEY)||'nu
 function saveEvents(evts){ localStorage.setItem(EV_KEY, JSON.stringify(evts)); }
 let EVENTS = loadEvents();
 function eventsDirty(){ return JSON.stringify(EVENTS)!==JSON.stringify(D.events||[]); }
+
+/* ---------- wayfinding trainer store (grounds the concierge; shown to patrons) ---------- */
+const WF_KEY='piq_admin_wayfinding';
+function loadWayfinding(){ try{ const s=JSON.parse(localStorage.getItem(WF_KEY)||'null'); if(Array.isArray(s)&&s.length) return s; }catch(e){} return JSON.parse(JSON.stringify(D.wayfinding||[])); }
+function saveWayfinding(rows){ localStorage.setItem(WF_KEY, JSON.stringify(rows)); }
+let WAYFINDING = loadWayfinding();
 
 /* ---------- mock stores ---------- */
 let MODULES = (D.modules&&D.modules.enabled||[]).map(m=>Object.assign({},m));
@@ -435,8 +450,8 @@ function render(){
   renderNav();
   $('#viewTitle').textContent = VIEWS.find(v=>v.id===view).label;
   const w=$('#wrap'); w.innerHTML='';
-  ({dashboard:vDashboard, insights:vInsights, content:vContent, modules:vModules,
-    qrcodes:vQr, branding:vBranding, users:vUsers, alerts:vAlerts})[view](w);
+  ({dashboard:vDashboard, insights:vInsights, content:vContent, wayfinding:vWayfinding, modules:vModules,
+    qrcodes:vQr, branding:vBranding, users:vUsers, aiusage:vAiUsage, alerts:vAlerts})[view](w);
 }
 
 /* ---------- 2. DASHBOARD (R14) ---------- */
@@ -670,11 +685,11 @@ function vContent(w){
 function tabEvents(b){
   const c=document.createElement('div'); c.className='card';
   c.innerHTML='<h2>Events '+(eventsDirty()?'<span class="badge b-warn">edited</span>':'')+'</h2>'+
-    '<p class="desc">Working editor — changes persist to <span class="mono">localStorage piq_admin_events</span>. The patron app picks these edits up when both run from the same origin (edit → publish → patron surface, R13).</p>'+
+    '<p class="desc">Working editor — changes persist to <span class="mono">localStorage piq_admin_events</span>. The patron app picks these edits up when both run from the same origin (edit → publish → patron surface, R13). Paid sessions route their registration payment through the EnvisionWare financial rail (Adyen), purpose <span class="mono">event</span>.</p>'+
     '<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" id="evAdd">'+ic('plus')+'Add event</button><button class="btn ghost sm" id="evReset">'+ic('refresh')+'Reset to sample data</button></div>'+
     '<div style="overflow-x:auto"><table><thead><tr><th>Title</th><th>Series</th><th>Time</th><th>Branch</th><th>Room</th><th>Registration</th><th></th></tr></thead><tbody>'+
     EVENTS.map((e,i)=>'<tr><td><b>'+esc(e.title)+'</b><div class="mono">'+esc(e.audience||'')+'</div></td><td>'+esc(e.series||'')+'</td><td>'+esc(e.time||'')+'</td><td>'+esc(e.branch||'')+'</td><td>'+esc(e.room||'')+'</td>'+
-      '<td>'+(e.registration==='required'?('required'+(e.capacity?' <span class="mono">'+(e.seatsLeft!=null?e.seatsLeft+'/':'')+e.capacity+' seats</span>':'')):'drop-in')+'</td>'+
+      '<td>'+(e.registration==='required'?('required'+(e.capacity?' <span class="mono">'+(e.seatsLeft!=null?e.seatsLeft+'/':'')+e.capacity+' seats</span>':'')):'drop-in')+(e.paid?' <span class="badge b-mock">Paid · $'+((e.priceCents||0)/100).toFixed(2)+'</span>':'')+'</td>'+
       '<td style="white-space:nowrap"><button class="iconbtn" data-edit="'+i+'" aria-label="Edit '+esc(e.title)+'">'+ic('pencil')+'</button> <button class="iconbtn" data-del="'+i+'" aria-label="Delete '+esc(e.title)+'">'+ic('trash')+'</button></td></tr>').join('')+
     '</tbody></table></div>';
   b.append(c);
@@ -694,12 +709,17 @@ function eventDialog(idx){
     '<div class="f"><label for="ev-reg">Registration</label><select id="ev-reg"><option'+(e.registration==='drop-in'?' selected':'')+'>drop-in</option><option'+(e.registration==='required'?' selected':'')+'>required</option></select></div>'+
     f('Audience','ev-aud',e.audience)+
     f('Capacity','ev-cap',e.capacity,'number')+f('Seats left','ev-seats',e.seatsLeft,'number')+
-    '</div>',
+    '<div class="f full"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="ev-paid" '+(e.paid?'checked':'')+'> Paid session / seminar</label></div>'+
+    '<div class="f" id="ev-price-wrap"'+(e.paid?'':' style="display:none"')+'><label for="ev-price">Price (USD)</label><input id="ev-price" type="number" min="0" step="0.01" value="'+esc(e.priceCents!=null?(e.priceCents/100).toFixed(2):'')+'"></div>'+
+    '</div>'+
+    '<p class="mono" style="color:var(--ink-faint);margin:10px 0 0">Paid registrations route through the EnvisionWare financial payment rail (Adyen), purpose <b>event</b>.</p>',
     '<button class="btn" id="evSave">'+ic('check')+'Save & publish</button>');
+  const paidCb=$('#ev-paid'); if(paidCb) paidCb.onchange=()=>{ $('#ev-price-wrap').style.display=paidCb.checked?'':'none'; };
   $('#evSave').onclick=()=>{
     const v=id=>$('#'+id).value.trim();
     const out={id:e.id||('evt-'+Date.now().toString(36)),title:v('ev-title'),series:v('ev-series'),time:v('ev-time'),branch:$('#ev-branch').value,room:v('ev-room'),registration:$('#ev-reg').value,audience:v('ev-aud')};
     if($('#ev-reg').value==='required'){ if(v('ev-cap'))out.capacity=+v('ev-cap'); if(v('ev-seats'))out.seatsLeft=+v('ev-seats'); }
+    if($('#ev-paid').checked){ const pv=parseFloat($('#ev-price').value); out.paid=true; out.priceCents=Math.round((isNaN(pv)?0:pv)*100); }
     if(!out.title){ toast('Title is required'); return; }
     if(idx==null) EVENTS.push(out); else EVENTS[idx]=out;
     saveEvents(EVENTS); closeDlg(); render(); toast('Saved — published to the patron surface (same-origin)');
@@ -741,6 +761,118 @@ function wireMockEdit(b){
       '<button class="btn" id="mockSave">'+ic('check')+'Save</button>');
     $('#mockSave').onclick=()=>{ closeDlg(); toast('Saved (mock) — would publish via POST /api/v1/admin/content'); };
   });
+}
+
+/* ---------- WAYFINDING TRAINER (train the concierge on what's located where) ---------- */
+function vWayfinding(w){
+  const c=document.createElement('div'); c.className='card';
+  c.innerHTML='<h2>Location training</h2>'+
+    '<p class="desc">Key locations that <b>ground the PatronIQ concierge\'s wayfinding answers</b>. Add / edit / delete rows; changes persist to <span class="mono">localStorage piq_admin_wayfinding</span> (like the Events editor).</p>'+
+    '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn sm" id="wfAdd">'+ic('plus')+'Add location</button><button class="btn ghost sm" id="wfReset">'+ic('refresh')+'Reset to sample</button></div>'+
+    '<div style="overflow-x:auto"><table><thead><tr><th>Label</th><th>Directions</th><th>Zone</th><th></th></tr></thead><tbody>'+
+    WAYFINDING.map((x,i)=>'<tr><td><b>'+esc(x.label)+'</b><div class="mono">'+esc(x.id)+'</div></td><td style="max-width:360px">'+esc(x.directions)+'</td><td>'+(x.zone?esc(x.zone):'<span class="mono">—</span>')+'</td>'+
+      '<td style="white-space:nowrap"><button class="iconbtn" data-wfedit="'+i+'" aria-label="Edit '+esc(x.label)+'">'+ic('pencil')+'</button> <button class="iconbtn" data-wfdel="'+i+'" aria-label="Delete '+esc(x.label)+'">'+ic('trash')+'</button></td></tr>').join('')+
+    '</tbody></table></div>';
+  w.append(c);
+
+  const m=document.createElement('div'); m.className='card';
+  const cur=localStorage.getItem('piq_admin_floormap');
+  m.innerHTML='<h2>Floor map</h2>'+
+    '<p class="desc">This map is <b>shown to patrons on their wayfinding results</b>. At install it uploads to the library\'s asset store; in this mock it is held in <span class="mono">localStorage piq_admin_floormap</span> as a data URL.</p>'+
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><label class="btn sm" for="fmFile" style="cursor:pointer">'+ic('upload')+'Choose image…</label>'+
+    '<input id="fmFile" type="file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden">'+
+    (cur?'<button class="btn ghost sm" id="fmClear">'+ic('trash')+'Remove</button>':'')+'</div>'+
+    '<div id="fmPreview">'+(cur?'<img src="'+esc(cur)+'" alt="Current floor map preview" style="max-width:100%;border:1px solid var(--line);border-radius:12px;display:block">':'<p class="mono" style="color:var(--ink-faint)">No floor map uploaded — patrons see the bundled default map.</p>')+'</div>';
+  w.append(m);
+
+  w.insertAdjacentHTML('beforeend','<div class="card" style="display:flex;gap:10px;align-items:center"><span class="badge b-mock">Mock — no backend</span><span style="font-size:13px;color:var(--ink-muted)">These locations + map train the PatronIQ concierge and are shown to patrons when they ask for directions.</span></div>');
+
+  c.querySelector('#wfAdd').onclick=()=>wayfindingDialog(null);
+  c.querySelector('#wfReset').onclick=()=>{ if(confirm('Reset locations to the sample dataset?')){ WAYFINDING=JSON.parse(JSON.stringify(D.wayfinding||[])); saveWayfinding(WAYFINDING); render(); toast('Locations reset to sample'); } };
+  c.querySelectorAll('[data-wfedit]').forEach(b=>b.onclick=()=>wayfindingDialog(+b.dataset.wfedit));
+  c.querySelectorAll('[data-wfdel]').forEach(b=>b.onclick=()=>{ const x=WAYFINDING[+b.dataset.wfdel]; if(confirm('Delete "'+x.label+'"?')){ WAYFINDING.splice(+b.dataset.wfdel,1); saveWayfinding(WAYFINDING); render(); toast('Location deleted'); if(window.PIQNotes&&PIQNotes.push) PIQNotes.push('Deleted wayfinding location: '+x.label,'admin · wayfinding'); } });
+
+  const fileIn=m.querySelector('#fmFile');
+  fileIn.onchange=()=>{
+    const file=fileIn.files&&fileIn.files[0]; if(!file) return;
+    const rd=new FileReader();
+    rd.onload=()=>{ try{ localStorage.setItem('piq_admin_floormap',rd.result); toast('Floor map uploaded — patrons now see this map'); if(window.PIQNotes&&PIQNotes.push) PIQNotes.push('Uploaded floor map ('+file.name+')','admin · wayfinding'); render(); }catch(err){ toast('Image too large to store in this mock — try a smaller file'); } };
+    rd.readAsDataURL(file);
+  };
+  const clr=m.querySelector('#fmClear');
+  if(clr) clr.onclick=()=>{ localStorage.removeItem('piq_admin_floormap'); toast('Floor map removed — patrons see the default map'); render(); };
+}
+function wayfindingDialog(idx){
+  const x = idx==null ? {id:'',label:'',directions:'',zone:''} : Object.assign({},WAYFINDING[idx]);
+  openDlg((idx==null?'Add location':'Edit location'),
+    '<div class="fgrid">'+
+    f('Label (shown to patrons)','wf-label',x.label,'text','full')+
+    '<div class="f full"><label for="wf-dir">Directions</label><textarea id="wf-dir" rows="3">'+esc(x.directions)+'</textarea></div>'+
+    f('Zone (optional)','wf-zone',x.zone)+
+    f('ID (concierge key — auto if blank)','wf-id',x.id)+
+    '</div>'+
+    '<p class="mono" style="color:var(--ink-faint);margin:10px 0 0">These locations ground the concierge\'s wayfinding answers.</p>',
+    '<button class="btn" id="wfSave">'+ic('check')+'Save</button>');
+  $('#wfSave').onclick=()=>{
+    const v=id=>$('#'+id).value.trim();
+    const label=v('wf-label'); if(!label){ toast('Label is required'); return; }
+    const slug=v('wf-id')||label.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,24)||('loc-'+Date.now().toString(36));
+    const out={id:slug,label:label,directions:v('wf-dir'),zone:v('wf-zone')};
+    if(idx==null) WAYFINDING.push(out); else WAYFINDING[idx]=out;
+    saveWayfinding(WAYFINDING); closeDlg(); render(); toast('Location saved — now grounds the concierge');
+    if(window.PIQNotes&&PIQNotes.push) PIQNotes.push((idx==null?'Added':'Edited')+' wayfinding location: '+label,'admin · wayfinding');
+  };
+}
+
+/* ---------- AI USAGE & COST (EnvisionWare-staff-only, R12) ---------- */
+function dayBars(data,days){
+  const W=560,H=170,pl=38,pr=10,pt=10,pb=26, pw=W-pl-pr, ph=H-pt-pb;
+  const mx=Math.max.apply(null,(data||[]).concat([1]));
+  const step=mx>800?400:(mx>200?200:100); const ymax=Math.ceil(mx/step)*step||step;
+  const n=(data||[]).length, gap=10, bw=n?(pw-gap*(n-1))/n:pw;
+  let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Bar chart of AI calls by day" style="max-width:'+W+'px">';
+  for(let t=0;t<=ymax;t+=step){ const y=pt+ph-(t/ymax)*ph; s+='<line x1="'+pl+'" y1="'+y+'" x2="'+(W-pr)+'" y2="'+y+'" stroke="'+GRID+'"/><text x="'+(pl-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="#7A7D8A">'+fmt(t)+'</text>'; }
+  (data||[]).forEach((val,i)=>{
+    const h2=(val/ymax)*ph, x=pl+i*(bw+gap), y=pt+ph-h2;
+    s+='<g data-tip="<span class=&quot;tt&quot;>'+esc(days[i]||('Day '+(i+1)))+'</span><br>'+fmt(val)+' calls">'+
+       '<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(0,h2).toFixed(1)+'" rx="4" fill="'+C_PRIMARY+'"/></g>'+
+       '<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="#7A7D8A">'+esc(days[i]||'')+'</text>';
+  });
+  return s+'</svg>';
+}
+function vAiUsage(w){
+  if(role!=='EnvisionWare Support'){ w.insertAdjacentHTML('beforeend','<div class="card"><p class="desc">This panel is restricted to EnvisionWare staff.</p></div>'); return; }
+  const ai=U.ai||{};
+  const calls=ai.calls||0, sessions=ai.sessions||0, byDay=ai.callsByDay||[];
+  const inTok=ai.inputTokens||0, outTok=ai.outputTokens||0;
+  const inCost=inTok/1e6*(ai.priceInPerM||0), outCost=outTok/1e6*(ai.priceOutPerM||0), total=inCost+outCost;
+  const perSession=sessions?(calls/sessions):0;
+  const m2=n=>'$'+n.toFixed(2);
+
+  w.insertAdjacentHTML('beforeend','<div class="card" style="display:flex;gap:10px;align-items:center"><span class="badge b-mock">EnvisionWare staff only</span><span style="font-size:12.5px;color:var(--ink-muted)">Visible to EnvisionWare staff only — not shown to library administrators.</span><span class="badge b-sample" style="margin-left:auto">Sample data</span></div>');
+
+  w.insertAdjacentHTML('beforeend','<div class="kpis">'+
+    kpi('AI calls · 7 days', fmt(calls), 'concierge model calls', spark(byDay,C_PRIMARY))+
+    kpi('Sessions · 7 days', fmt(sessions), '≈ '+perSession.toFixed(1)+' calls / session', '')+
+    kpi('Est. cost · 7 days', m2(total), 'input '+m2(inCost)+' · output '+m2(outCost), '')+
+    kpi('Tokens · 7 days', fmt(inTok+outTok), fmt(inTok)+' in · '+fmt(outTok)+' out', '')+
+  '</div>');
+
+  const c1=document.createElement('div'); c1.className='card';
+  c1.innerHTML='<h2>Calls by day</h2><p class="desc">Concierge model calls per day (7 days).</p>'+dayBars(byDay,U.days||[]);
+  w.append(c1); wireBarHover(c1);
+
+  const c2=document.createElement('div'); c2.className='card';
+  c2.innerHTML='<h2>Estimated cost</h2>'+
+    '<p class="desc">Model <span class="mono">'+esc(ai.model||'—')+'</span> · price basis $'+(ai.priceInPerM||0).toFixed(2)+' / 1M input · $'+(ai.priceOutPerM||0).toFixed(2)+' / 1M output. Figures are <b>estimated</b> from the sample metering rollup.</p>'+
+    '<div style="overflow-x:auto"><table><thead><tr><th>Direction</th><th>Tokens</th><th style="text-align:right">Est. cost</th></tr></thead><tbody>'+
+      '<tr><td>Input</td><td class="mono">'+fmt(inTok)+'</td><td style="text-align:right;font-weight:600">'+m2(inCost)+'</td></tr>'+
+      '<tr><td>Output</td><td class="mono">'+fmt(outTok)+'</td><td style="text-align:right;font-weight:600">'+m2(outCost)+'</td></tr>'+
+      '<tr><td><b>Total (estimated)</b></td><td class="mono">'+fmt(inTok+outTok)+'</td><td style="text-align:right;font-weight:700">'+m2(total)+'</td></tr>'+
+    '</tbody></table></div>';
+  w.append(c2);
+
+  w.insertAdjacentHTML('beforeend','<p style="font-size:12.5px;color:var(--ink-muted);margin-top:4px;display:flex;align-items:center;gap:6px">'+ic('shield')+'Visible to EnvisionWare staff only — not shown to library administrators.</p>');
 }
 
 /* ---------- 5. MODULES (R15) ---------- */

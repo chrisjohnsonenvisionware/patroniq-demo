@@ -192,6 +192,16 @@
   .slot.mine{background:var(--success-wash);border-color:var(--success);color:var(--success)}
   .confirmNote{display:flex;gap:9px;align-items:flex-start;background:var(--success-wash);border-radius:11px;padding:12px 13px;margin-top:12px;font-size:14.5px;color:#14532D}
   .confirmNote .ic{color:var(--success);width:20px;height:20px;margin-top:1px}
+  .wayfindCta{display:flex;align-items:center;gap:13px;width:100%;text-align:left;margin-top:14px;padding:15px 16px;min-height:44px;
+    border:0;border-radius:14px;cursor:pointer;color:#fff;font-family:inherit;
+    background:linear-gradient(120deg,var(--primary-strong),var(--primary));box-shadow:var(--shadow)}
+  .wayfindCta:hover{background:linear-gradient(120deg,#3a0f5c,var(--primary-strong))}
+  .wayfindCta .ic{width:26px;height:26px;flex:none;color:#fff}
+  .wayfindCta .wt{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+  .wayfindCta .wt b{font-size:16px;font-weight:600}
+  .wayfindCta .wt span{font-size:13px;opacity:.9}
+  body.kiosk .wayfindCta{min-height:60px}
+  .floorMap{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:12px;margin-top:12px;background:#fff}
   .equip{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
   .equip span{font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--ink-muted)}
 
@@ -537,6 +547,57 @@ function miniMap(label){
     '<circle cx="239.5" cy="52" r="2.6" fill="#FFFFFF"/>'+
     '<text x="239" y="34" font-size="11" font-weight="600" text-anchor="middle" fill="#46166B" font-family="inherit">'+esc(label)+'</text></svg>';
 }
+/* ---------- floor-map photo shown on wayfinding results (admin-uploaded via the
+   Wayfinding trainer, else the bundled default) ---------- */
+function floorMapSrc(){
+  try{ const c=localStorage.getItem('piq_admin_floormap'); if(c)return c; }catch(e){}
+  return 'floor-map.png';
+}
+function floorMapImg(label){
+  return '<img class="floorMap" src="'+esc(floorMapSrc())+'" alt="Library floor map — route to '+esc(label||'your destination')+'" loading="lazy">';
+}
+
+/* =====================================================================
+   "Find something in the library" — patron wayfinding finder (R-wayfind)
+   ===================================================================== */
+function wayfindTo(dest){
+  if(state.view!=='concierge')nav('concierge');
+  state.thread.push({who:'patron',text:'Take me to: '+dest.label});
+  state.messages.push({role:'user',content:'Where is '+dest.label+'?'});
+  const result={route:'wayfind',payload:{destination_id:dest.id,spoken_text:dest.label}};
+  state.thread.push({who:'ai',result});
+  state.messages.push({role:'assistant',content:JSON.stringify({route:'wayfind',...result.payload})});
+  state.lastInteraction={utterance:dest.label,route:'wayfind',payload:result.payload};
+  paintThread();
+  announce('Directions to '+dest.label);
+}
+function matchWayfinding(text){
+  const q=String(text||'').toLowerCase();
+  return D.wayfinding.find(w=>
+    q.includes(w.id)||
+    q.split(/\W+/).some(word=>word.length>3&&w.label.toLowerCase().includes(word))||
+    w.label.toLowerCase().split(/\W+/).some(word=>word.length>3&&q.includes(word)));
+}
+function resolveWayfindText(text){
+  const hit=matchWayfinding(text);
+  if(hit){wayfindTo(hit);return;}
+  if(state.view!=='concierge')nav('concierge');
+  submit(text); // no direct match → hand to the AI concierge (it answers or escalates to staff)
+}
+function openWayfindDialog(){
+  const chips=D.wayfinding.map(w=>'<button class="chip" type="button" data-dest="'+esc(w.id)+'">'+ic('pin','width:17px;height:17px')+esc(w.label)+'</button>').join('');
+  const html='<h2 class="dlgTitle">Where do you want to go?</h2>'+
+    '<p class="sub" style="margin:2px 0 6px">Tap a place, or tell me what you’re looking for.</p>'+
+    '<div class="chips" role="group" aria-label="Library destinations">'+chips+'</div>'+
+    '<form id="wfForm"><div class="field"><label for="wfIn">Search for a place</label>'+
+    '<input id="wfIn" placeholder="e.g. quiet study room, restroom, children’s books" autocomplete="off"></div></form>'+
+    '<div class="dlgActions"><button class="btn ghost" type="button" data-x>Cancel</button>'+
+    '<button class="btn" type="submit" form="wfForm">'+ic('pin','width:18px;height:18px')+'Find it</button></div>';
+  const d=openDialog(html,{label:'Find something in the library'});
+  d.el.querySelectorAll('[data-dest]').forEach(b=>b.onclick=()=>{const w=D.wayfinding.find(x=>x.id===b.dataset.dest);d.close();wayfindTo(w);});
+  d.el.querySelector('[data-x]').onclick=()=>d.close();
+  d.el.querySelector('#wfForm').onsubmit=e=>{e.preventDefault();const v=$('#wfIn').value.trim();if(!v)return;d.close();resolveWayfindText(v);};
+}
 
 /* =====================================================================
    Concierge — mock router (offline) + live Claude, ported & re-grounded
@@ -725,7 +786,8 @@ function routeHtml(r){
     const w=D.wayfinding.find(x=>x.id===p.destination_id);
     inner='<div class="aiLead">'+esc(p.spoken_text||(w?w.label:'Directions'))+'</div>'+
       (w?'<div class="directions">'+esc(w.directions)+'</div>':'')+
-      miniMap(w?w.label:'Destination');
+      miniMap(w?w.label:'Destination')+
+      floorMapImg(w?w.label:'Destination');
   }else if(r.route==='answer'){
     inner='<div class="aiBody">'+(p.response_html||'')+'</div>'+
       ((p.suggested_next||[]).length?'<div class="chips">'+p.suggested_next.map(n=>'<button class="chip" data-screen="'+esc(n.screen)+'">'+esc(n.label)+'</button>').join('')+'</div>':'');
@@ -787,11 +849,13 @@ function viewHome(){
     '<form class="askForm" id="askForm"><label class="sr-only" for="askIn">Ask the library anything</label>'+
     '<input id="askIn" placeholder="Ask the library anything…" autocomplete="off">'+
     '<button class="btn" type="submit" aria-label="Ask">'+ic('send')+'</button></form>'+
+    '<button class="wayfindCta" id="wayfindCta">'+ic('pin')+'<span class="wt"><b>Find something in the library</b><span>Directions to holds, study rooms, restrooms &amp; more</span></span></button>'+
     '<div class="chips">'+QUICK.map(q=>'<button class="chip" data-say="'+esc(q)+'">'+esc(q)+'</button>').join('')+'</div>'+
     '<h2>Services</h2><div class="tiles">'+tiles+'</div>'+
     '<h2>Today at your library</h2><div class="card eventPrev">'+evPrev+
     '<button class="linkish" data-go="events">See all events</button></div>';
   $('#askForm').onsubmit=e=>{e.preventDefault();const v=$('#askIn').value;if(v.trim())submit(v);};
+  $('#wayfindCta').onclick=openWayfindDialog;
   document.querySelectorAll('[data-say]').forEach(b=>b.onclick=()=>submit(b.dataset.say));
   document.querySelectorAll('[data-tile]').forEach(b=>b.onclick=()=>MODULE_TILES[b.dataset.tile].go());
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>nav(b.dataset.go));
@@ -904,25 +968,47 @@ function guides(){
 function viewEvents(){
   const cards=D.events.map(e=>{
     const reg=state.regs[e.id];
+    const price=e.paid&&e.priceCents?e.priceCents/100:0;
+    const pay=(state.eventPay||{})[e.id];
     let action='';
     if(reg){
-      action='<div class="confirmNote">'+ic('check')+'<span>Registered — confirmation <strong>'+esc(reg)+'</strong></span></div>'+demoChip('rooms');
+      action='<div class="confirmNote">'+ic('check')+'<span>Registered — confirmation <strong>'+esc(reg)+'</strong>'+
+        (pay?' · paid '+money(pay.total)+' by '+esc(pay.method)+' · rail ref <strong>'+esc(pay.ref)+'</strong>':'')+'</span></div>'+demoChip(pay?'payments':'rooms');
     }else if(e.registration==='required'){
       const left=e.seatsLeft-(state.regs[e.id]?1:0);
       action=left>0
-        ?'<div style="display:flex;align-items:center;gap:10px;margin-top:12px"><button class="btn sm" data-reg="'+esc(e.id)+'">Register</button><span class="badge b-warn">'+left+' seats left</span></div>'
+        ?'<div style="display:flex;align-items:center;gap:10px;margin-top:12px"><button class="btn sm" data-reg="'+esc(e.id)+'">'+(price>0?'Register · '+money(price):'Register')+'</button><span class="badge b-warn">'+left+' seats left</span></div>'
         :'<div style="margin-top:12px"><span class="badge b-danger">Full — waitlist at the desk</span></div>';
     }else{
       action='<div style="margin-top:12px"><span class="badge b-ok">Drop-in — no registration needed</span></div>';
     }
     return '<article class="card"><span class="seriesChip">'+esc(e.series)+'</span>'+
+      (price>0?'<span class="badge b-neutral" style="margin-left:8px">Paid · '+money(price)+'</span>':'')+
       '<h3>'+esc(e.title)+'</h3>'+
       '<div class="meta">'+esc(e.time)+' · '+esc(e.branch)+' · '+esc(e.room)+'</div>'+
-      '<div class="meta">'+esc(e.audience)+'</div>'+action+'</article>';
+      '<div class="meta">'+esc(e.audience)+(price>0?' · seminar fee paid at registration':'')+'</div>'+action+'</article>';
   }).join('');
   $('#main').innerHTML='<h1>Attend something</h1><p class="sub">Today across '+D.branches.length+' branches. Registration only where seats are limited.</p>'+cards;
   document.querySelectorAll('[data-reg]').forEach(b=>b.onclick=()=>{
     const e=D.events.find(x=>x.id===b.dataset.reg);
+    const price=e.paid&&e.priceCents?e.priceCents/100:0;
+    if(price>0){
+      // Paid seminar — route through the EnvisionWare payment rail (Adyen, purpose 'event') BEFORE confirming the seat.
+      openPaymentSheet({
+        title:'Register — '+e.title,
+        lineItems:[{label:e.title+' · seminar seat',amount:price}],
+        total:price,
+        purpose:'event',
+        onSuccess:r=>{
+          state.regs[e.id]=code();
+          e.seatsLeft=Math.max(0,e.seatsLeft-1);
+          (state.eventPay=state.eventPay||{})[e.id]=r;
+          announce('Paid '+money(price)+' and registered for '+e.title+'. Confirmation '+state.regs[e.id]);
+          viewEvents();
+        }
+      });
+      return;
+    }
     confirmDialog({
       title:'Register for this event?',
       body:'<p><strong>'+esc(e.title)+'</strong><br>'+esc(e.time)+' · '+esc(e.branch)+' · '+esc(e.room)+'<br><span class="muted">'+esc(e.audience)+' · '+e.seatsLeft+' seats left</span></p>',

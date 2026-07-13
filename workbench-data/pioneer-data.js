@@ -39,10 +39,10 @@ window.PIONEER_DATA = {
     {id:"storytime-toddler",title:"Toddler Story Time (1–3 years)",series:"Story Time",time:"10:00 AM",branch:"Norman East",room:"Children's Program Room",registration:"drop-in",audience:"Ages 1–3 + caregivers"},
     {id:"pj-storytime",title:"Family Story Time: PJ Story Time!",series:"Story Time",time:"6:30 PM",branch:"Library Lab",room:"Community Room",registration:"drop-in",audience:"Families"},
     {id:"rhythm-babies",title:"Rhythm Babies (0–24 months)",series:"Early Literacy",time:"10:30 AM",branch:"Moore",room:"Story Room",registration:"drop-in",audience:"Babies + caregivers"},
-    {id:"glass-lantern",title:"Creativity Unleashed: Glass Lantern",series:"Creativity Unleashed",time:"2:00 PM",branch:"Southwest OKC",room:"Maker Studio",registration:"required",capacity:16,seatsLeft:5,audience:"Adults"},
+    {id:"glass-lantern",title:"Creativity Unleashed: Glass Lantern",series:"Creativity Unleashed",time:"2:00 PM",branch:"Southwest OKC",room:"Maker Studio",registration:"required",capacity:16,seatsLeft:5,audience:"Adults",paid:true,priceCents:1500},
     {id:"yoga",title:"Get Moving with All Levels Yoga",series:"Get Moving",time:"6:30 PM",branch:"Moore",room:"Community Room A",registration:"required",capacity:24,seatsLeft:11,audience:"Adults"},
     {id:"resume-help",title:"Land That Job: Resume Help",series:"Land That Job",time:"1:00 PM",branch:"Norman West",room:"Study Room 2",registration:"drop-in",audience:"Adults"},
-    {id:"soldering",title:"Learn It! Soldering for Beginners",series:"Learn It!",time:"3:00 PM",branch:"Blanchard",room:"Maker Corner",registration:"required",capacity:10,seatsLeft:2,audience:"Teens & Adults"},
+    {id:"soldering",title:"Learn It! Soldering for Beginners",series:"Learn It!",time:"3:00 PM",branch:"Blanchard",room:"Maker Corner",registration:"required",capacity:10,seatsLeft:2,audience:"Teens & Adults",paid:true,priceCents:1000},
     {id:"mahjong",title:"Connection Corner: Mahjong",series:"Connection Corner",time:"12:30 PM",branch:"Newcastle",room:"Meeting Room",registration:"drop-in",audience:"Adults"}
   ],
   rooms: [
@@ -102,13 +102,18 @@ window.PIONEER_DATA = {
   usage: { // sample metering for dashboards (marked SAMPLE in UI)
     days: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
     qrScans: [212,246,231,258,290,342,167], appLoads: [388,412,395,441,502,610,289], aiTurns: [644,701,668,752,830,1044,471],
+    // AI token metering — EnvisionWare-staff-only (cost visibility). calls == AI turns (7d).
+    ai: {calls:5110, sessions:1290, inputTokens:6132000, outputTokens:459900,
+      model:"claude-haiku-4-5-20251001", priceInPerM:1.00, priceOutPerM:5.00,
+      callsByDay:[644,701,668,752,830,1044,471]},
     routeMix: {answer:46,wayfind:19,transaction:17,clarify:12,escalate:6},
     features: {events:28,rooms:22,account:18,print:14,wayfinding:11,resources:7},
     escalationReasons: {account:34,technology:26,other:18,language:12,accessibility:7,safety:3},
-    payments: {count:126,volume:512.40,byMethod:{card:58,googlepay:26,applepay:24,cashapp:18},
+    payments: {count:134,volume:632.40,byMethod:{card:62,googlepay:28,applepay:26,cashapp:18},
       byPurpose:{
         "Printing":{amount:214.60,count:68},
         "Fines & lost-item fees":{amount:176.00,count:22},
+        "Events & seminars":{amount:120.00,count:8}, // paid programs — Adyen rail, purpose 'event'
         "Room reservations":{amount:84.00,count:28},
         "Replacement cards":{amount:37.80,count:8}
       }},
