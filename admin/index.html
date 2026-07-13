@@ -47,6 +47,11 @@
   .btn.sm{padding:6px 11px;font-size:13px;border-radius:8px}
   .btn.full{width:100%;justify-content:center}
   .btn:disabled{opacity:.55;cursor:not-allowed}
+  .segbar{display:inline-flex;gap:4px;background:var(--primary-soft);border:1px solid var(--primary-line);border-radius:11px;padding:4px;margin-bottom:16px;flex-wrap:wrap}
+  .segbtn{min-height:36px;border:0;background:transparent;color:var(--primary-strong);font-size:13px;font-weight:600;padding:0 14px;border-radius:8px;cursor:pointer}
+  .segbtn:hover{background:#fff}
+  .segbtn.on{background:var(--primary);color:#fff}
+  .segbtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
   .sso{display:grid;gap:8px;margin-top:14px}
   .divider{display:flex;align-items:center;gap:10px;color:var(--ink-faint);font-size:12px;margin:16px 0 0;text-transform:uppercase;letter-spacing:.06em}
   .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
@@ -373,6 +378,7 @@ let role = sessionStorage.getItem('piq_admin_role') || null;
 let selRole = role || 'Library Admin';
 let view = 'dashboard';
 let contentTab = 'events';
+let reportRange = localStorage.getItem('piq_report_range') || 'week'; // reporting time-range selector
 
 function renderRoleGrid(){
   $('#roleGrid').innerHTML = ROLES.map(r =>
@@ -434,12 +440,17 @@ const STAFF = [
   {name:'Jo Beckett',      email:'jbeckett@pioneerlibrarysystem.org',   role:'Staff',               branch:'Shawnee',     idp:'Local',    last:'3 days ago'},
   {name:'EW Field Support',email:'support@envisionware.com',            role:'EnvisionWare Support',branch:'EnvisionWare',idp:'Entra ID', last:'on demand'}
 ];
-const KB = [
+const KB_SEED = [
   {slug:'library-cards', title:'Getting a library card', body:(D.library&&D.library.cardPolicy)||''},
   {slug:'fine-free',     title:'Fine-free policy',       body:'Pioneer is fine-free — fees apply only to lost or damaged items. '+((D.patrons&&D.patrons[0]&&D.patrons[0].feesNote)||'')},
   {slug:'printing',      title:'Printing & copying',     body:'B&W $0.10/page, color $0.50/page. Send from your phone or a library PC.'},
   {slug:'hours',         title:'Hours & locations',      body:(D.branches||[]).length+' locations across Cleveland, McClain and Pottawatomie counties. Hours vary by branch tier.'}
 ];
+const KB_KEY='piq_admin_kb_docs';
+function loadKb(){ try{ const s=JSON.parse(localStorage.getItem(KB_KEY)); if(Array.isArray(s)) return s; }catch{} return JSON.parse(JSON.stringify(KB_SEED)); }
+function saveKb(){ localStorage.setItem(KB_KEY, JSON.stringify(KB)); }
+let KB = loadKb();
+const kbSlug=(t)=>t.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48)||'doc';
 
 /* ---------- WCAG contrast (live-computed for branding view) ---------- */
 function relLum(hex){ const c=hex.replace('#',''); const f=i=>{let v=parseInt(c.substr(i,2),16)/255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4);}; return 0.2126*f(0)+0.7152*f(2)+0.0722*f(4); }
@@ -455,25 +466,74 @@ function render(){
 }
 
 /* ---------- 2. DASHBOARD (R14) ---------- */
+/* Reporting time-range selector. Sample data scales believably from the 7-day base
+   using a fixed deterministic wave (stable across renders — no randomness). We never
+   mutate PIONEER_DATA; every consumer works on locally-computed scaled copies. */
+const RANGES = {
+  week:    {label:'Week',     mult:1,   buckets:null,                         sub:'this week',    axis:'day'},
+  month:   {label:'Month',    mult:4,   buckets:['Wk 1','Wk 2','Wk 3','Wk 4'], sub:'this month',   axis:'week'},
+  quarter: {label:'Quarter',  mult:13,  buckets:['Month 1','Month 2','Month 3'], sub:'this quarter', axis:'month'},
+  year:    {label:'Year',     mult:52,  buckets:['Q1','Q2','Q3','Q4'],        sub:'this year',    axis:'quarter'},
+  all:     {label:'All time', mult:150, buckets:['2024','2025','2026'],       sub:'all time',     axis:'year'}
+};
+if(!RANGES[reportRange]) reportRange='week';
+function rangeCfg(){ return RANGES[reportRange] || RANGES.week; }
+function rangeMult(){ return rangeCfg().mult; }
+function rangeSub(){ return rangeCfg().sub; }
+function rangeAxis(){ return rangeCfg().axis; }
+function rangeLabels(){ const c=rangeCfg(); return reportRange==='week' ? (U.days||[]).slice() : c.buckets.slice(); }
+// series(base7): real 7-day array for week; else deterministic per-bucket values summing to round(weekSum*mult).
+function series(base7){
+  const c=rangeCfg();
+  if(reportRange==='week') return (base7||[]).slice();
+  const target=Math.round(sum(base7)*c.mult), n=c.buckets.length;
+  const wts=[]; let wsum=0;
+  for(let i=0;i<n;i++){ const w=1+0.35*Math.sin(i*1.3+0.6)+0.15*Math.cos(i*0.7); wts.push(w); wsum+=w; }
+  const out=[]; let acc=0;
+  for(let i=0;i<n;i++){ const v=(i===n-1)?(target-acc):Math.round(target*wts[i]/wsum); out.push(Math.max(0,v)); acc+=v; }
+  return out;
+}
+// Locally-scaled copy of the payments block — PIONEER_DATA stays untouched (reversible on range switch).
+function scaledPayments(){
+  const p=U.payments||{count:0,volume:0,byMethod:{},byPurpose:{}}, m=rangeMult();
+  const byMethod={}; Object.keys(p.byMethod||{}).forEach(k=>{ byMethod[k]=Math.round(p.byMethod[k]*m); });
+  const byPurpose={}; Object.keys(p.byPurpose||{}).forEach(k=>{ byPurpose[k]={amount:+((p.byPurpose[k].amount||0)*m).toFixed(2),count:Math.round((p.byPurpose[k].count||0)*m)}; });
+  return {count:Math.round((p.count||0)*m), volume:+((p.volume||0)*m).toFixed(2), byMethod, byPurpose};
+}
+// Segmented control (WCAG: button group, aria-pressed, >=36px targets).
+function rangeBar(){
+  return '<div class="segbar" role="group" aria-label="Reporting time range">'+
+    Object.keys(RANGES).map(k=>'<button type="button" class="segbtn'+(k===reportRange?' on':'')+'" aria-pressed="'+(k===reportRange)+'" data-range="'+k+'">'+RANGES[k].label+'</button>').join('')+
+  '</div>';
+}
+function wireRangeBar(scope){
+  (scope||document).querySelectorAll('.segbtn[data-range]').forEach(b=>b.onclick=()=>{
+    reportRange=b.dataset.range;
+    try{ localStorage.setItem('piq_report_range',reportRange); }catch(e){}
+    render();
+  });
+}
 function spark(data,color){
   const w=64,h=26,mx=Math.max.apply(null,data),mn=Math.min.apply(null,data);
   const pts=data.map((v,i)=>((i*(w-4)/(data.length-1))+2).toFixed(1)+','+(h-3-(v-mn)/(mx-mn||1)*(h-8)).toFixed(1)).join(' ');
   return '<svg class="spark" width="'+w+'" height="'+h+'" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 function vDashboard(w){
-  const scans=U.qrScans||[], loads=U.appLoads||[], turns=U.aiTurns||[], pay=U.payments||{count:0,volume:0,byMethod:{}};
+  const scans=series(U.qrScans), loads=series(U.appLoads), turns=series(U.aiTurns), pay=scaledPayments();
+  const rs=rangeSub();
+  w.insertAdjacentHTML('beforeend', rangeBar()); wireRangeBar(w);
   w.insertAdjacentHTML('beforeend',
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="badge b-sample">Sample data</span><span style="font-size:12.5px;color:var(--ink-muted)">Metering figures come from the shared demo dataset — a live deployment reads the UsageEvent rollup (R14).</span></div>'+
     '<div class="kpis">'+
-      kpi('QR scans · 7 days', fmt(sum(scans)), 'billable entry events', spark(scans,C_PRIMARY))+
-      kpi('App loads · 7 days', fmt(sum(loads)), 'PWA + kiosk sessions', spark(loads,C_PRIMARY))+
-      kpi('AI turns · 7 days', fmt(sum(turns)), 'concierge conversations', spark(turns,C_PRIMARY))+
-      kpi('Payment volume', '$'+(pay.volume||0).toFixed(2), fmt(pay.count)+' payments · Adyen rail', '')+
+      kpi('QR scans · '+rs, fmt(sum(scans)), 'billable entry events', spark(scans,C_PRIMARY))+
+      kpi('App loads · '+rs, fmt(sum(loads)), 'PWA + kiosk sessions', spark(loads,C_PRIMARY))+
+      kpi('AI turns · '+rs, fmt(sum(turns)), 'concierge conversations', spark(turns,C_PRIMARY))+
+      kpi('Payment volume · '+rs, '$'+(pay.volume||0).toFixed(2), fmt(pay.count)+' payments · Adyen rail', '')+
     '</div>');
 
   // line chart
   const c1=document.createElement('div'); c1.className='card';
-  c1.innerHTML='<h2>Scans & app loads by day</h2><p class="desc">Entry activity across all '+(D.branches||[]).length+' locations.</p>'+
+  c1.innerHTML='<h2>Scans & app loads by '+rangeAxis()+'</h2><p class="desc">Entry activity across all '+(D.branches||[]).length+' locations.</p>'+
     '<div class="chartlegend"><span class="key"><i class="line" style="background:'+C_PRIMARY+'"></i>QR scans</span><span class="key"><i class="line" style="background:'+C_ACCENT+'"></i>App loads</span></div>'+
     lineChartSvg();
   w.append(c1); wireLineHover(c1);
@@ -481,17 +541,17 @@ function vDashboard(w){
   const row=document.createElement('div'); row.className='cardrow';
   // donut
   const c2=document.createElement('div'); c2.className='card';
-  c2.innerHTML='<h2>Route mix</h2><p class="desc">Share of AI turns by route (7 days).</p>'+donutSvg();
+  c2.innerHTML='<h2>Route mix</h2><p class="desc">Share of AI turns by route ('+rs+').</p>'+donutSvg();
   row.append(c2);
   // payments split
   const c3=document.createElement('div'); c3.className='card';
-  c3.innerHTML='<h2>Payment methods</h2><p class="desc">'+fmt(pay.count)+' payments · $'+(pay.volume||0).toFixed(2)+' volume (7 days).</p>'+paySplitSvg();
+  c3.innerHTML='<h2>Payment methods</h2><p class="desc">'+fmt(pay.count)+' payments · $'+(pay.volume||0).toFixed(2)+' volume ('+rs+').</p>'+paySplitSvg(pay);
   row.append(c3);
   w.append(row); wireDonutHover(c2); wireBarHover(c3);
 
   // payments traced to what the money was for (financial rail) — R14
   const rowP=document.createElement('div'); rowP.className='card';
-  rowP.innerHTML='<h2>Payments by purpose</h2><p class="desc">What the '+fmt(pay.count)+' payments ($'+(pay.volume||0).toFixed(2)+') on the EnvisionWare financial rail were collected for (7 days).</p>'+payPurposeSvg();
+  rowP.innerHTML='<h2>Payments by purpose</h2><p class="desc">What the '+fmt(pay.count)+' payments ($'+(pay.volume||0).toFixed(2)+') on the EnvisionWare financial rail were collected for ('+rs+').</p>'+payPurposeSvg(pay);
   w.append(rowP); wireBarHover(rowP);
 
   const row2=document.createElement('div'); row2.className='cardrow';
@@ -504,7 +564,7 @@ function vDashboard(w){
 function kpi(l,v,m,sp){ return '<div class="kpi"><div class="l">'+l+'</div><div class="v">'+v+'</div><div class="m">'+m+'</div>'+(sp||'')+'</div>'; }
 
 function lineChartSvg(){
-  const days=U.days||[], A=U.qrScans||[], B=U.appLoads||[];
+  const days=rangeLabels(), A=series(U.qrScans), B=series(U.appLoads);
   const W=660,H=230,pl=46,pr=16,pt=14,pb=30, pw=W-pl-pr, ph=H-pt-pb;
   const mx=Math.max.apply(null,A.concat(B)); const step=mx>400?200:100; const ymax=Math.ceil(mx/step)*step;
   const X=i=>pl+i*pw/(days.length-1), Y=v=>pt+ph-(v/ymax)*ph;
@@ -522,7 +582,7 @@ function lineChartSvg(){
 }
 function wireLineHover(card){
   const svg=card.querySelector('#lineSvg'), hit=card.querySelector('#lineHit'), xh=card.querySelector('#xh');
-  const days=U.days||[], A=U.qrScans||[], B=U.appLoads||[];
+  const days=rangeLabels(), A=series(U.qrScans), B=series(U.appLoads);
   const pl=46,pr=16,W=660,pw=W-pl-pr;
   hit.addEventListener('mousemove',e=>{
     const r=svg.getBoundingClientRect(); const sx=(e.clientX-r.left)*(W/r.width);
@@ -547,12 +607,12 @@ function donutSvg(){
   });
   const legend=entries.map(([k,v],i)=>'<span class="key"><i style="background:'+RAMP5[i]+'"></i>'+k+' <b style="color:var(--ink)">'+v+'%</b></span>').join('');
   return '<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><svg viewBox="0 0 210 210" width="180" role="img" aria-label="Donut chart of route mix">'+seg+
-    '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" font-size="21" font-weight="600" fill="#23242A">'+fmt(sum(U.aiTurns))+'</text>'+
-    '<text x="'+cx+'" y="'+(cy+15)+'" text-anchor="middle" font-size="11" fill="#7A7D8A">AI turns / 7d</text></svg>'+
+    '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" font-size="21" font-weight="600" fill="#23242A">'+fmt(sum(series(U.aiTurns)))+'</text>'+
+    '<text x="'+cx+'" y="'+(cy+15)+'" text-anchor="middle" font-size="11" fill="#7A7D8A">AI turns · '+rangeSub()+'</text></svg>'+
     '<div class="chartlegend" style="flex-direction:column;gap:7px;align-items:flex-start">'+legend+'</div></div>';
 }
-function paySplitSvg(){
-  const by=(U.payments&&U.payments.byMethod)||{}; const entries=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+function paySplitSvg(pay){
+  pay=pay||U.payments||{}; const by=pay.byMethod||{}; const entries=Object.entries(by).sort((a,b)=>b[1]-a[1]);
   const total=entries.reduce((n,e)=>n+e[1],0);
   const W=560,H=30; let x=0, seg='';
   const NAMES={card:'Card',googlepay:'Google Pay',applepay:'Apple Pay',cashapp:'Cash App Pay'};
@@ -568,8 +628,8 @@ function paySplitSvg(){
   const legend=entries.map(([k,v],i)=>'<span class="key"><i style="background:'+RAMP4[i]+'"></i>'+(NAMES[k]||k)+' <b style="color:var(--ink)">'+v+'</b></span>').join('');
   return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Payment method split" style="max-width:'+W+'px">'+seg+'</svg><div class="chartlegend" style="margin-top:10px">'+legend+'</div>';
 }
-function payPurposeSvg(){
-  const by=(U.payments&&U.payments.byPurpose)||{};
+function payPurposeSvg(pay){
+  pay=pay||U.payments||{}; const by=pay.byPurpose||{};
   const entries=Object.entries(by).sort((a,b)=>b[1].amount-a[1].amount);
   if(!entries.length) return '<p class="desc">No payment data.</p>';
   const mx=Math.max.apply(null,entries.map(e=>e[1].amount));
@@ -662,9 +722,9 @@ function kbDialog(insight){
   ov.querySelector('#kbSave').onclick=()=>{
     const title=ti.value.trim(), body=ta.value.trim();
     if(!body){ ov.querySelector('#kbErr').textContent='Please enter the answer before adding.'; ta.focus(); return; }
-    const kb=JSON.parse(localStorage.getItem('piq_admin_kb')||'[]');
-    kb.push({title:title||'(untitled)',body,source:'ai-insight',at:new Date().toISOString()});
-    localStorage.setItem('piq_admin_kb',JSON.stringify(kb));
+    // Publish into the same knowledge-base store the KB tab + concierge read.
+    KB.push({slug:kbSlug(title||'doc'),title:title||'(untitled)',body,source:'ai-insight'});
+    saveKb();
     if(window.PIQNotes&&PIQNotes.push) PIQNotes.push('KB draft: "'+(title||'untitled')+'" → '+body,'admin · knowledge-base');
     close(); toast('Added to Knowledge base — published to the concierge.');
   };
@@ -740,13 +800,46 @@ function tabServices(b){
   wireMockEdit(b);
 }
 function tabKb(b){
-  b.insertAdjacentHTML('beforeend','<div class="card"><h2>Knowledge base</h2><p class="desc">Per-library docs that ground the AI concierge (R10). Markdown, published per doc.</p>'+
+  b.insertAdjacentHTML('beforeend','<div class="card"><h2>Knowledge base</h2>'+
+    '<p class="desc">Long-form docs that ground the AI concierge (R10). Write markdown or upload <b>.md / .txt / .pdf / images</b>. In the live app these persist server-side and the concierge reads &amp; summarizes them on the next turn (PDF text is extracted; images are stored with your caption). Here they persist to <span class="mono">localStorage piq_admin_kb_docs</span>.</p>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+
+      '<button class="btn sm" id="kbAdd">'+ic('plus')+'New doc</button>'+
+      '<label class="btn ghost sm" style="cursor:pointer">'+ic('note')+'Upload file<input type="file" id="kbFile" accept=".md,.txt,.pdf,image/*" style="display:none"></label>'+
+      '<button class="btn ghost sm" id="kbReset">'+ic('refresh')+'Reset to sample</button></div>'+
     '<div style="overflow-x:auto"><table><thead><tr><th>Slug</th><th>Title</th><th>Body</th><th></th></tr></thead><tbody>'+
-    KB.map(d=>'<tr><td class="mono">'+esc(d.slug)+'</td><td><b>'+esc(d.title)+'</b></td><td style="max-width:380px">'+esc(d.body.slice(0,140))+(d.body.length>140?'…':'')+'</td>'+
-    '<td><button class="iconbtn" data-mockedit="'+esc(d.title)+'" aria-label="Edit '+esc(d.title)+'">'+ic('pencil')+'</button></td></tr>').join('')+'</tbody></table></div>'+
-    '<div style="margin-top:12px"><button class="btn ghost sm" id="kbAdd">'+ic('plus')+'New doc</button></div></div>');
-  $('#kbAdd').onclick=()=>toast('New KB doc editor is mocked in this build');
-  wireMockEdit(b);
+    KB.map((d,i)=>'<tr><td class="mono">'+esc(d.slug)+'</td><td><b>'+esc(d.title)+'</b></td><td style="max-width:360px">'+esc((d.body||'').slice(0,140))+((d.body||'').length>140?'…':'')+'</td>'+
+    '<td style="white-space:nowrap"><button class="iconbtn" data-kbedit="'+i+'" aria-label="Edit '+esc(d.title)+'">'+ic('pencil')+'</button> <button class="iconbtn" data-kbdel="'+i+'" aria-label="Delete '+esc(d.title)+'">'+ic('trash')+'</button></td></tr>').join('')+'</tbody></table></div></div>');
+  $('#kbAdd').onclick=()=>kbDocDialog(null);
+  $('#kbReset').onclick=()=>{ if(confirm('Reset the knowledge base to the sample docs?')){ KB=JSON.parse(JSON.stringify(KB_SEED)); saveKb(); render(); toast('Knowledge base reset'); } };
+  b.querySelectorAll('[data-kbedit]').forEach(x=>x.onclick=()=>kbDocDialog(+x.dataset.kbedit));
+  b.querySelectorAll('[data-kbdel]').forEach(x=>x.onclick=()=>{ const d=KB[+x.dataset.kbdel]; if(confirm('Delete "'+d.title+'"?')){ KB.splice(+x.dataset.kbdel,1); saveKb(); render(); toast('Doc deleted'); } });
+  const fi=b.querySelector('#kbFile'); if(fi) fi.onchange=()=>kbUpload(fi.files[0]);
+}
+function kbDocDialog(idx){
+  const d = idx==null ? {title:'',body:''} : KB[idx];
+  openDlg(idx==null?'New knowledge-base doc':'Edit — '+d.title,
+    '<div class="f full"><label for="kbT">Title</label><input id="kbT" type="text" value="'+esc(d.title)+'"></div>'+
+    '<div class="f full"><label for="kbB">Content (markdown)</label><textarea id="kbB" rows="10" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:14px/1.5 inherit;resize:vertical">'+esc(d.body||'')+'</textarea></div>',
+    '<button class="btn" id="kbSave">'+ic('check')+'Save doc</button>');
+  $('#kbSave').onclick=()=>{ const t=$('#kbT').value.trim(), body=$('#kbB').value.trim(); if(!body){ toast('Enter the content first'); return; }
+    if(idx==null) KB.push({slug:kbSlug(t||'doc'),title:t||'Untitled',body}); else { d.title=t||d.title; d.body=body; }
+    saveKb(); closeDlg(); render(); toast('Saved — the concierge grounds on this in the live app'); if(window.PIQNotes&&PIQNotes.push) PIQNotes.push('KB doc saved: "'+(t||'untitled')+'"','admin · knowledge-base'); };
+}
+function kbUpload(file){
+  if(!file) return;
+  const name=file.name, ext=(name.split('.').pop()||'').toLowerCase(), title=name.replace(/\.[^.]+$/,'');
+  const isImg=/^image\//.test(file.type)||['png','jpg','jpeg','webp','gif'].includes(ext);
+  if(ext==='md'||ext==='txt'){
+    const r=new FileReader(); r.onload=()=>{ KB.push({slug:kbSlug(title),title,body:String(r.target.result||'').trim()}); saveKb(); render(); toast('Imported '+name+' — grounds the concierge'); }; r.readAsText(file);
+  } else if(ext==='pdf'){
+    KB.push({slug:kbSlug(title),title,body:'[PDF uploaded: '+name+'] — In the live app the server extracts the PDF text so the concierge can summarize it. (Text extraction runs server-side; this demo stores the reference only.)'});
+    saveKb(); render(); toast('PDF added — text is extracted server-side in the live app');
+  } else if(isImg){
+    const cap=prompt('Describe what this image/layout shows (this caption is what the AI reads):','');
+    if(cap==null) return;
+    KB.push({slug:kbSlug(title),title,body:(cap||'(image)').trim()+'\n\n![ '+title+' ](image uploaded — stored as a library asset)'});
+    saveKb(); render(); toast('Image added with caption — grounds the concierge');
+  } else { toast('Unsupported file type — use .md, .txt, .pdf, or an image'); }
 }
 function tabWayfinding(b){
   b.insertAdjacentHTML('beforeend','<div class="card"><h2>Wayfinding</h2><p class="desc">Destinations the concierge can route to; directions are branch-templated.</p>'+
@@ -842,9 +935,11 @@ function dayBars(data,days){
 }
 function vAiUsage(w){
   if(role!=='EnvisionWare Support'){ w.insertAdjacentHTML('beforeend','<div class="card"><p class="desc">This panel is restricted to EnvisionWare staff.</p></div>'); return; }
-  const ai=U.ai||{};
-  const calls=ai.calls||0, sessions=ai.sessions||0, byDay=ai.callsByDay||[];
-  const inTok=ai.inputTokens||0, outTok=ai.outputTokens||0;
+  const ai=U.ai||{}, m=rangeMult(), rs=rangeSub();
+  w.insertAdjacentHTML('beforeend', rangeBar()); wireRangeBar(w);
+  const byDay=series(ai.callsByDay);
+  const calls=Math.round((ai.calls||0)*m), sessions=Math.round((ai.sessions||0)*m);
+  const inTok=Math.round((ai.inputTokens||0)*m), outTok=Math.round((ai.outputTokens||0)*m);
   const inCost=inTok/1e6*(ai.priceInPerM||0), outCost=outTok/1e6*(ai.priceOutPerM||0), total=inCost+outCost;
   const perSession=sessions?(calls/sessions):0;
   const m2=n=>'$'+n.toFixed(2);
@@ -852,14 +947,14 @@ function vAiUsage(w){
   w.insertAdjacentHTML('beforeend','<div class="card" style="display:flex;gap:10px;align-items:center"><span class="badge b-mock">EnvisionWare staff only</span><span style="font-size:12.5px;color:var(--ink-muted)">Visible to EnvisionWare staff only — not shown to library administrators.</span><span class="badge b-sample" style="margin-left:auto">Sample data</span></div>');
 
   w.insertAdjacentHTML('beforeend','<div class="kpis">'+
-    kpi('AI calls · 7 days', fmt(calls), 'concierge model calls', spark(byDay,C_PRIMARY))+
-    kpi('Sessions · 7 days', fmt(sessions), '≈ '+perSession.toFixed(1)+' calls / session', '')+
-    kpi('Est. cost · 7 days', m2(total), 'input '+m2(inCost)+' · output '+m2(outCost), '')+
-    kpi('Tokens · 7 days', fmt(inTok+outTok), fmt(inTok)+' in · '+fmt(outTok)+' out', '')+
+    kpi('AI calls · '+rs, fmt(calls), 'concierge model calls', spark(byDay,C_PRIMARY))+
+    kpi('Sessions · '+rs, fmt(sessions), '≈ '+perSession.toFixed(1)+' calls / session', '')+
+    kpi('Est. cost · '+rs, m2(total), 'input '+m2(inCost)+' · output '+m2(outCost), '')+
+    kpi('Tokens · '+rs, fmt(inTok+outTok), fmt(inTok)+' in · '+fmt(outTok)+' out', '')+
   '</div>');
 
   const c1=document.createElement('div'); c1.className='card';
-  c1.innerHTML='<h2>Calls by day</h2><p class="desc">Concierge model calls per day (7 days).</p>'+dayBars(byDay,U.days||[]);
+  c1.innerHTML='<h2>Calls by '+rangeAxis()+'</h2><p class="desc">Concierge model calls per '+rangeAxis()+' ('+rs+').</p>'+dayBars(byDay,rangeLabels());
   w.append(c1); wireBarHover(c1);
 
   const c2=document.createElement('div'); c2.className='card';
