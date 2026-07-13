@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>PatronIQ — Kiosk</title>
+<style>
+  :root{
+    --accent:#67338E; --accent-strong:#46166B; --accent-2:#FF8300;
+    --ink:#23242A; --ink-3:#55586A; --paper:#F7F6FA; --surface:#fff; --line:#E4D8F0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font:16px/1.5 "Alexandria","Segoe UI",system-ui,sans-serif; color:var(--ink);
+    background:
+      radial-gradient(1200px 700px at 15% -10%, #efe6f8, transparent),
+      radial-gradient(1000px 600px at 100% 110%, #fde7d3, transparent),
+      var(--paper);
+    min-height:100vh; display:flex; flex-direction:column;
+  }
+  header{display:flex;align-items:center;justify-content:space-between;padding:22px 34px}
+  .brand{display:flex;align-items:center;gap:14px;font-weight:800;font-size:20px}
+  .logo{width:40px;height:40px}
+  .cn{font-size:12px;font-weight:700;color:var(--accent-strong);background:#efe6f8;border:1px solid var(--line);padding:5px 12px;border-radius:999px}
+  .clock{font-variant-numeric:tabular-nums;color:var(--ink-3);font-weight:600}
+  main{flex:1;display:grid;grid-template-columns:1.1fr 1fr;gap:32px;align-items:center;max-width:1120px;margin:0 auto;padding:12px 34px 40px;width:100%}
+  @media (max-width:900px){main{grid-template-columns:1fr;text-align:center}}
+  h1{font-size:52px;line-height:1.04;letter-spacing:-0.02em;margin:0 0 14px}
+  h1 em{font-style:normal;color:var(--accent)}
+  .lead{font-size:20px;color:var(--ink-3);margin:0 0 26px;max-width:30ch}
+  @media (max-width:900px){.lead{margin-inline:auto}}
+  .steps{display:flex;flex-direction:column;gap:14px;max-width:34ch}
+  @media (max-width:900px){.steps{margin-inline:auto}}
+  .step{display:flex;align-items:center;gap:14px;font-size:17px;font-weight:500}
+  .num{flex:none;width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800}
+  .qrwrap{justify-self:center;background:var(--surface);border:1px solid var(--line);border-radius:28px;padding:30px;box-shadow:0 24px 60px rgba(70,22,107,.16);text-align:center}
+  .qrwrap svg{width:300px;height:300px;display:block}
+  @media (max-width:900px){.qrwrap svg{width:240px;height:240px}}
+  .qrcap{margin-top:16px;font-weight:700;font-size:18px}
+  .qrurl{margin-top:4px;font-size:13px;color:var(--ink-3);word-break:break-all;max-width:300px}
+  footer{display:flex;align-items:center;justify-content:space-between;padding:16px 34px;color:var(--ink-3);font-size:13px}
+  .pb strong{color:var(--ink)}
+  .gear{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;font-size:13px;color:var(--ink-3);cursor:pointer}
+  .cfg{position:fixed;inset:auto 20px 20px auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 16px 40px rgba(0,0,0,.18);max-width:380px;display:none}
+  .cfg.open{display:block}
+  .cfg label{font-size:12px;font-weight:700;color:var(--ink-3);display:block;margin-bottom:6px}
+  .cfg input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px}
+  .cfg button{margin-top:10px;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer}
+  .cfg .hint{font-size:12px;color:var(--ink-3);margin-top:8px;line-height:1.45}
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 40 40" aria-label="Pioneer Library System" role="img">
+        <path d="M14 4 L26 4 L18 22 L24 22 L12 36 L16 20 L10 20 Z" fill="#EA0029"/>
+        <path d="M6 30 C14 26 26 26 34 30 C26 33 14 33 6 30 Z" fill="#FF8300"/>
+      </svg>
+      <span>Pioneer Library System</span>
+      <span class="cn">PatronIQ</span>
+    </div>
+    <div class="clock" id="clock"></div>
+  </header>
+
+  <main>
+    <section>
+      <h1>Take the library <em>with you.</em></h1>
+      <p class="lead">Scan the code to open PatronIQ on your phone — no app to install.</p>
+      <div class="steps">
+        <div class="step"><span class="num">1</span> Point your phone camera at the code</div>
+        <div class="step"><span class="num">2</span> Tap the link that appears</div>
+        <div class="step"><span class="num">3</span> Ask, browse, book, and pay — on your device</div>
+      </div>
+    </section>
+
+    <section class="qrwrap">
+      <div id="qr" aria-label="Scan to open PatronIQ on your phone"></div>
+      <div class="qrcap">Scan to start</div>
+      <div class="qrurl" id="qrurl"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span class="pb">Powered by <strong>EnvisionWare</strong></span>
+    <button class="gear" id="gear">Kiosk settings</button>
+  </footer>
+
+  <div class="cfg" id="cfg">
+    <label for="urlin">Patron app URL (encoded in the QR)</label>
+    <input type="text" id="urlin" placeholder="https://…/patronIQ/explorer/index.html" />
+    <button id="save">Save &amp; regenerate</button>
+    <div class="hint">Defaults to this page's folder + <code>explorer/</code>. Set an absolute
+      https URL so phones can open it (a <code>file://</code> URL won't open on a phone).</div>
+  </div>
+
+<script src="workbench-data/qr.js"></script>
+<script>
+  // Patron target for the QR. Defaults to the PUBLIC (no-VPN) demo URL so a phone off the
+  // corporate VPN can still open it. Override with ?url=… or the kiosk settings panel; set
+  // it to 'local' to derive from this page's own location instead.
+  const PUBLIC_PATRON_URL = 'https://chrisjohnsonenvisionware.github.io/patroniq-demo/explorer/index.html?via=kiosk';
+  const params = new URLSearchParams(location.search);
+  function localTarget(){
+    try { return new URL('explorer/index.html?via=kiosk', location.href).href; }
+    catch { return 'explorer/index.html?via=kiosk'; }
+  }
+  function target(){
+    const o = params.get('url') || localStorage.getItem('piq_kiosk_url');
+    if (o === 'local') return localTarget();
+    return o || PUBLIC_PATRON_URL;
+  }
+  function render(){
+    const url = target();
+    document.getElementById('qr').innerHTML = QR.svg(url);
+    document.getElementById('qrurl').textContent = url;
+    document.getElementById('urlin').value = url;
+  }
+  function tick(){
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'}) + '  ·  ' +
+      d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  }
+  document.getElementById('gear').onclick = () => document.getElementById('cfg').classList.toggle('open');
+  document.getElementById('save').onclick = () => {
+    const v = document.getElementById('urlin').value.trim();
+    if (v) localStorage.setItem('piq_kiosk_url', v); else localStorage.removeItem('piq_kiosk_url');
+    document.getElementById('cfg').classList.remove('open');
+    render();
+  };
+  render(); tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>

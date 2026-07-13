@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PatronIQ — Workbench Hub</title>
+<style>
+  :root{--ink:#0F172A;--ink-3:#64748B;--paper:#F0F7FF;--line:#BFDBFE;--line-2:#93C5FD;--accent:#0284C7;--accent-strong:#0369A1;--surface-2:#EFF6FF}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);
+    background:radial-gradient(1200px 600px at 20% -10%,#e0f2fe,transparent),var(--paper);display:grid;place-items:center;padding:32px}
+  .hub{max-width:900px;width:100%}
+  .brand{display:flex;align-items:center;gap:14px;font-weight:800;font-size:24px;margin-bottom:6px}
+  .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-strong));display:grid;place-items:center;color:#fff;font-weight:800;font-size:22px}
+  .lead{color:var(--ink-3);margin:0 0 26px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media (max-width:800px){.grid{grid-template-columns:1fr}}
+  .card{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px;transition:.14s}
+  .card:hover{transform:translateY(-3px);border-color:var(--line-2);box-shadow:0 14px 30px rgba(2,132,199,.14)}
+  .ic{font-size:30px}
+  .t{font-weight:800;font-size:19px;margin:10px 0 4px}
+  .d{color:var(--ink-3);font-size:14px}
+  .tag{display:inline-block;margin-top:12px;font-size:12px;font-weight:700;color:var(--accent-strong);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px 11px}
+  .note{margin-top:26px;font-size:13px;color:var(--ink-3);background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  code{background:var(--surface-2);padding:1px 6px;border-radius:6px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="hub">
+  <div class="brand"><span class="logo">P</span>PatronIQ — Model Workbench</div>
+  <p class="lead"><b>Pioneer Library System</b> demo · powered by EnvisionWare. Click through each surface, jot notes (they pool across all three via <code>Copy for Claude</code>), then paste back into chat to iterate. Full design docs in <code>docs/</code>.</p>
+  <div class="grid">
+    <a class="card" href="explorer/index.html">
+      <div class="ic">📱</div><div class="t">Patron App</div>
+      <div class="d">Pioneer-branded PWA — AI concierge, account &amp; fee payment, events, rooms, level-beneath chips. Add <code>?kiosk=1</code> for the kiosk attract screen with a scannable QR (host this folder so phones can open it).</div>
+      <span class="tag">explorer/</span>
+    </a>
+    <a class="card" href="admin/index.html">
+      <div class="ic">📊</div><div class="t">Admin Console</div>
+      <div class="d">Role-gated login, usage dashboards + AI insights, working events editor, module marketplace (P01–P14), QR &amp; branding management.</div>
+      <span class="tag">admin/</span>
+    </a>
+    <a class="card" href="backend/index.html">
+      <div class="ic">⚙️</div><div class="t">Backend Console</div>
+      <div class="d">15-endpoint try-it API, Adyen payment ledger + webhook simulator, metering pipeline, 14-entity data model, module contract.</div>
+      <span class="tag">backend/</span>
+    </a>
+    <a class="card" href="kiosk.html">
+      <div class="ic">📱</div><div class="t">Kiosk + Scan-to-Phone</div>
+      <div class="d">Full-screen kiosk attract screen with a scannable QR — the patron hands off to their phone and the app installs as a PWA. Add <code>?url=</code> to point it anywhere.</div>
+      <span class="tag">kiosk.html</span>
+    </a>
+  </div>
+  <div class="note">
+    These are offline mocks that run from <code>file://</code> — no Node or database needed. The real, editable app is in <code>src/</code>; see <code>RECONSTRUCTION-NOTES.md</code>. Live Claude mode (in Frontend &amp; Backend) calls Anthropic directly from the browser with your key — local tinkering only.
+  </div>
+</div>
+</body>
+</html>

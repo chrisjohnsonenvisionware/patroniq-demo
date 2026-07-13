@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PatronIQ Backend Console</title>
+<style>
+  :root{
+    --primary:#67338E;--primary-strong:#46166B;--primary-soft:#F3EDF8;--primary-line:#DCCDE9;
+    --accent:#1B96D4;--accent-deep:#1E6093;--accent-tint:#45B1E7;--accent-soft:#E7F4FB;
+    --ink:#23242A;--ink-muted:#515462;--ink-faint:#7A7D8A;
+    --surface:#FFFFFF;--bg:#F7F7F7;--line:#E5E2EA;
+    --success:#15803D;--success-soft:#DCFCE7;
+    --warning:#B45309;--warning-soft:#FEF3C7;
+    --danger:#B91C1C;--danger-soft:#FEE2E2;
+    --focus:#1B96D4;
+    --dark-bg:#291640;--dark-panel:#33204D;--dark-line:#463060;--dark-ink:#EDE6F4;--dark-muted:#B9A6CE;
+    --code-bg:#1E0F33;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font:14px/1.55 'Alexandria','Segoe UI',system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--dark-bg)}
+  :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}
+  a{color:var(--accent-deep)}
+  svg.ic{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+  button{font-family:inherit}
+  .app{display:grid;grid-template-columns:250px 1fr 360px;height:100vh}
+  @media (max-width:1280px){.app{grid-template-columns:230px 1fr}.dock{display:none}.dock.open{display:flex;position:fixed;inset:0 0 0 auto;width:min(400px,94vw);z-index:70;box-shadow:-12px 0 40px rgba(20,8,35,.5)}}
+  @media (max-width:880px){.app{grid-template-columns:1fr}.nav{display:none}.nav.open{display:flex;position:fixed;inset:0 auto 0 0;width:250px;z-index:70;box-shadow:12px 0 40px rgba(20,8,35,.5)}}
+
+  /* nav */
+  .nav{background:var(--dark-bg);color:var(--dark-ink);overflow:auto;border-right:1px solid var(--dark-line);display:flex;flex-direction:column}
+  .nav .brand{display:flex;align-items:center;gap:10px;padding:16px;border-bottom:1px solid var(--dark-line)}
+  .nav .logo{width:32px;height:32px;border-radius:9px;background:var(--primary);display:grid;place-items:center;color:#fff;font-weight:700}
+  .nav .brand b{display:block;font-size:14px;line-height:1.2}
+  .nav .brand span{font-size:11px;color:var(--dark-muted)}
+  .nav h4{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--dark-muted);margin:14px 14px 5px;font-weight:600}
+  .nav a{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 14px;color:var(--dark-ink);cursor:pointer;font-size:12.5px;border-left:2px solid transparent;text-decoration:none}
+  .nav a:hover{background:var(--dark-panel)}
+  .nav a.active{background:var(--dark-panel);border-left-color:var(--accent-tint);color:#fff}
+  .nav a .p{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+  .method{font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:5px;letter-spacing:.03em}
+  .m-get{background:#123B57;color:#8FD4F5}.m-post{background:#3D2359;color:#D2B3E8}
+  .nav .foot{margin-top:auto;padding:12px 14px;border-top:1px solid var(--dark-line);font-size:11px;color:var(--dark-muted)}
+
+  /* main */
+  .main{background:var(--bg);overflow:auto}
+  .head{position:sticky;top:0;background:rgba(255,255,255,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(6px);padding:13px 22px;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .head .path{font-family:ui-monospace,Consolas,monospace;font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .wrap{max-width:920px;margin:0 auto;padding:20px 22px 110px}
+  .desc{color:var(--ink-muted);margin:0 0 16px;font-size:13.5px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:15px 18px;margin-bottom:14px}
+  .card h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-muted);font-weight:600}
+  pre{background:var(--code-bg);color:#EDE6F4;border-radius:10px;padding:12px 14px;overflow:auto;font:12.5px/1.5 ui-monospace,Consolas,monospace;margin:0}
+  .k{color:#8FD4F5}.s{color:#A5E8B8}.n{color:#F5B891}.c{color:#9C89B3}
+  textarea{width:100%;background:var(--code-bg);color:#EDE6F4;border:1px solid var(--dark-line);border-radius:10px;padding:12px;font:12.5px/1.5 ui-monospace,Consolas,monospace;resize:vertical}
+  .btn{border:0;border-radius:9px;padding:9px 15px;font-size:13.5px;font-weight:600;cursor:pointer;background:var(--primary);color:#fff;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{background:var(--primary-strong)}
+  .btn.ghost{background:#fff;color:var(--primary-strong);border:1px solid var(--primary-line)}
+  .btn.ghost:hover{background:var(--primary-soft)}
+  .btn.sm{padding:6px 11px;font-size:12.5px}
+  .row-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+  .status{font-family:ui-monospace,Consolas,monospace;font-size:12px;font-weight:700;padding:3px 9px;border-radius:6px}
+  .st-2{background:var(--success-soft);color:var(--success)}.st-4{background:var(--warning-soft);color:var(--warning)}.st-5{background:var(--danger-soft);color:var(--danger)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted);font-weight:600}
+  tr:last-child td{border-bottom:0}
+  td code,.inline{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(--primary-soft);padding:1px 5px;border-radius:5px;color:var(--primary-strong)}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;margin:2px 4px 2px 0}
+  .p-mock{background:var(--accent-soft);color:var(--accent-deep)}
+  .p-ok{background:var(--success-soft);color:var(--success)}
+  .p-warn{background:var(--warning-soft);color:var(--warning)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{background:#fff;border:1px solid var(--primary-line);border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer;color:var(--primary-strong)}
+  .chip:hover{background:var(--primary-soft)}
+  .loglines{background:var(--code-bg);border-radius:10px;padding:10px 14px;margin-bottom:8px}
+  .logline{font:12.5px/1.7 ui-monospace,Consolas,monospace;color:#EDE6F4;display:flex;gap:9px;align-items:baseline}
+  .logline .no{color:#9C89B3}
+  .logline.ok::before{content:"";width:7px;height:7px;border-radius:50%;background:#4ADE80;flex:none;align-self:center}
+  .logline.skip::before{content:"";width:7px;height:7px;border-radius:50%;background:#FBBF24;flex:none;align-self:center}
+
+  .flow{display:flex;flex-direction:column;gap:0;margin:6px 0}
+  .fstep{display:flex;gap:12px;align-items:flex-start}
+  .fstep .rail{display:flex;flex-direction:column;align-items:center;flex:none}
+  .fstep .nodenum{width:28px;height:28px;border-radius:50%;background:var(--primary-soft);color:var(--primary-strong);font-weight:700;font-size:12.5px;display:grid;place-items:center;border:1.5px solid var(--primary-line)}
+  .fstep .rail .vline{width:2px;flex:1;min-height:18px;background:var(--primary-line)}
+  .fstep .fbody{padding:3px 0 16px}
+  .fstep:last-child .fbody{padding-bottom:2px}
+  .fstep b{font-size:13.5px}
+  .fstep .fd{font-size:12.5px;color:var(--ink-muted)}
+  .splitbar{display:flex;height:34px;border-radius:8px;overflow:hidden;gap:2px;margin:10px 0 6px}
+  .splitbar div{display:grid;place-items:center;color:#fff;font-size:12px;font-weight:600}
+  .statechain{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px}
+  .statechain .st{background:var(--primary-soft);color:var(--primary-strong);border-radius:7px;padding:4px 10px;font-weight:600;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+  .statechain .arr{color:var(--ink-faint)}
+
+  /* dock */
+  .dock{background:var(--dark-bg);color:var(--dark-ink);display:flex;flex-direction:column;border-left:1px solid var(--dark-line)}
+  .tabs{display:flex;border-bottom:1px solid var(--dark-line)}
+  .tab{flex:1;padding:11px 8px;text-align:center;font-size:12px;font-weight:600;color:var(--dark-muted);cursor:pointer;background:transparent;border:0}
+  .tab.active{color:#fff;box-shadow:inset 0 -2px 0 var(--accent-tint)}
+  .pane{flex:1;overflow:auto;padding:15px;display:none}.pane.active{display:block}
+  .pane h3{margin:.2em 0 .6em;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent-tint)}
+  .small{font-size:12.5px;color:var(--dark-muted)}
+  .note{background:var(--dark-panel);border:1px solid var(--dark-line);border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:13px}
+  .note .meta{font-size:11px;color:var(--dark-muted);margin-bottom:3px;font-family:ui-monospace,Consolas,monospace}
+  .note .x{float:right;cursor:pointer;color:var(--dark-muted);border:0;background:none;padding:0}
+  .note .x svg.ic{width:13px;height:13px}
+  .btn-dock{background:var(--accent-deep);color:#fff;border:0;border-radius:9px;padding:9px 12px;font-weight:600;font-size:13px;cursor:pointer;width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn-dock:hover{background:var(--accent)}
+  .btn-dock.alt{background:var(--dark-panel);border:1px solid var(--dark-line)}
+  .pane input[type=password],.pane input[type=text]{width:100%;background:var(--code-bg);color:var(--dark-ink);border:1px solid var(--dark-line);border-radius:8px;padding:8px;font-size:12px}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:13px;margin:8px 0}
+  .fabs{position:fixed;bottom:16px;z-index:60;display:none}
+  #navFab{left:16px}#dockFab{right:16px}
+  @media (max-width:880px){#navFab{display:block}}
+  @media (max-width:1280px){#dockFab{display:block}}
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;pointer-events:none;transition:.22s;z-index:100;max-width:90vw}
+  #toast.on{opacity:1;transform:translateX(-50%)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="nav" id="nav" aria-label="API navigation">
+    <div class="brand"><span class="logo" aria-hidden="true">P</span><div><b>PatronIQ Backend</b><span>Pioneer Library System · mock</span></div></div>
+    <div id="navBody"></div>
+    <div class="foot">API surface per DOTNET-BLUEPRINT §6<br>Powered by EnvisionWare</div>
+  </nav>
+
+  <section class="main">
+    <div class="head"><div class="path" id="headPath"></div><div id="headRight"></div></div>
+    <div class="wrap" id="wrap"></div>
+  </section>
+
+  <aside class="dock" id="dock" aria-label="Notes dock">
+    <div class="tabs">
+      <button class="tab active" data-pane="notes">Notes</button>
+      <button class="tab" data-pane="live">Live mode</button>
+    </div>
+    <div class="pane active" id="pane-notes">
+      <h3>Iteration notes</h3>
+      <p class="small">Poke the endpoints, then note what should change. <b>Copy for Claude</b> and paste into chat.</p>
+      <textarea id="noteInput" rows="3" placeholder="e.g. 'pay-fees should support partial payment' or 'Add GET /admin/usage/export.csv'"></textarea>
+      <button class="btn-dock" id="addNote"><span data-ic="plus"></span>Add note</button>
+      <div id="noteList" style="margin-top:12px"></div>
+      <button class="btn-dock alt" id="copyNotes"><span data-ic="copy"></span>Copy for Claude</button>
+      <button class="btn-dock alt" id="clearNotes" style="margin-top:6px">Clear notes</button>
+    </div>
+    <div class="pane" id="pane-live">
+      <h3>Live Claude (real routing)</h3>
+      <div class="toggle"><input type="checkbox" id="liveOn"><label for="liveOn">Use real model for /conversations</label></div>
+      <label class="small" for="apiKey">Anthropic API key (browser-only)</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
+      <label class="small" style="margin-top:8px;display:block" for="modelId">Model</label>
+      <input type="text" id="modelId" value="claude-haiku-4-5-20251001">
+      <p class="small" style="margin-top:10px">Off = deterministic mock handlers (fully offline). On = the real router system prompt + 5 tools, grounded in the Pioneer dataset, calling Anthropic directly from the browser. Local tinkering only — the key never leaves this tab.</p>
+    </div>
+  </aside>
+</div>
+<button class="btn fabs" id="navFab">Routes</button>
+<button class="btn fabs" id="dockFab">Notes</button>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="../workbench-data/pioneer-data.js"></script>
+<script>
+'use strict';
+const D = window.PIONEER_DATA || {};
+const $ = s => document.querySelector(s);
+const el = (t,c,h) => { const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e; };
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => (n||0).toLocaleString('en-US');
+const sum = a => (a||[]).reduce((x,y)=>x+y,0);
+const jsonHi = o => esc(JSON.stringify(o,null,2))
+  .replace(/&quot;([^&]+?)&quot;:/g,'<span class="k">&quot;$1&quot;</span>:')
+  .replace(/: &quot;(.*?)&quot;/g,': <span class="s">&quot;$1&quot;</span>')
+  .replace(/: (-?\d[\d.]*)/g,': <span class="n">$1</span>');
+
+/* ---------- line icons ---------- */
+const IC = {
+  plus:'<path d="M12 5v14"/><path d="M5 12h14"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  x:'<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',
+  send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+  note:'<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11l5-5V5a2 2 0 0 0-2-2z"/><path d="M15 21v-4a2 2 0 0 1 2-2h4"/>',
+  db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',
+  blocks:'<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><path d="M17 14v6"/><path d="M14 17h6"/>',
+  activity:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  card:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>'
+};
+function ic(name){ return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">'+(IC[name]||'')+'</svg>'; }
+document.querySelectorAll('[data-ic]').forEach(n => { n.outerHTML = ic(n.dataset.ic); });
+
+let toastT;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),2200); }
+
+/* =========================================================
+   In-memory backend state (mock)
+   ========================================================= */
+const LEDGER = {};            // orderId -> PaymentIntentRec
+const WEBHOOK_SEEN = new Set(); // dedupe pspReference:eventCode:success
+const USAGE_EVENTS = [];      // append-only UsageEvent mock
+const SESSIONS = {};          // patronSessionId -> PatronSession
+let PATRONS = JSON.parse(JSON.stringify(D.patrons||[]));
+let MODULES = (D.modules&&D.modules.enabled||[]).map(m=>Object.assign({},m));
+const CATALOG = (D.modules&&D.modules.catalog)||[];
+let QRS = (D.qrPlacements||[]).map(q=>Object.assign({},q));
+let lastOrderId = null;
+let seq = 0;
+const rid = p => p+'_'+(Date.now().toString(36))+(seq++).toString(36);
+const nowIso = () => new Date().toISOString();
+const lb = (product,productId,endpoint,request,response) => ({product,productId,endpoint,request,response});
+
+/* =========================================================
+   Endpoint catalog — DOTNET-BLUEPRINT §6 (/api/v1)
+   ========================================================= */
+const EP = [
+ // ---- Patron ----
+ {id:'entry',group:'patron',method:'POST',path:'/api/v1/entry',
+  purpose:'QR scan or PWA load enters here (R1). Issues a server-side PatronSession (fixes T8) and appends the billable qr_scan UsageEvent — the response shows the exact event row it creates.',
+  schema:{qrCodeId:'string — a QrCode id (see /admin/qrcodes)','kioskMode?':'boolean'},
+  sample:{qrCodeId:'qr-nw-entrance'},
+  guards:['Idempotency-Key required on the UsageEvent','QR identity is signed in production (T7)','session TTL 30 min'],
+  quick:null},
+ {id:'conversations',group:'patron',method:'POST',path:'/api/v1/conversations',
+  purpose:'One patron utterance in, one routing decision out: clarify | transaction | wayfind | answer | escalate. The router is ported from the spine; the orchestrator loop (E5) composes module tools when the route is transaction. Toggle Live mode in the dock to run the real model.',
+  schema:{utterance:'string (1–2000)','messages?':'{role,content}[] — prior turns','locale?':'en|es','patronSessionId?':'string','inputMethod?':'text|voice'},
+  sample:{utterance:'Where do I pick up my holds?',locale:'en'},
+  guards:['rate limit 30/60s per kiosk (Redis)','token budget warn 80% / block 100%','fail-safe: any error → escalate','every turn audited to Conversation'],
+  quick:['Where do I pick up my holds?','I need help printing my resume','Sign me up for the soldering class','Book a study room this afternoon','What time do you close today?','I want to pay my fee']},
+ {id:'content',group:'patron',method:'GET',path:'/api/v1/content',
+  purpose:'Per-library content bundle the patron app renders: hours, events, rooms, services, resources, wayfinding. Admin edits publish here (R13). ETag + Cache-Control: max-age=300.',
+  schema:{'(none)':'GET — library resolved from the PatronSession / QR scope'},
+  sample:null, guards:['read-only','ETag on content','admin CRUD is the write path']},
+ {id:'account',group:'patron',method:'GET',path:'/api/v1/account/summary',
+  purpose:'SIP2-backed account lookup (D3): checkouts with due dates, holds status, fees. Pioneer is fine-free — fees exist only for lost/damaged items, and the UI treats $0 as the normal state. Try patron 21000012345678 pin 1234.',
+  schema:{patronId:'string — barcode',pin:'string — where the ILS requires it'},
+  sample:{patronId:'21000012345678',pin:'1234'},
+  guards:['patron id hashed into PatronSession.verifiedPatron','ILS remains the system of record','PII never logged']},
+ {id:'payfees',group:'patron',method:'POST',path:'/api/v1/account/pay-fees',
+  purpose:'Creates a payment session for the patron’s outstanding fees. On the CAPTURE webhook the fee is posted back to the ILS via SIP2 (fee-paid) and a transaction UsageEvent is emitted — drive it with /webhooks/adyen.',
+  schema:{patronId:'string',pin:'string'},
+  sample:{patronId:'21000012345678',pin:'1234'},
+  guards:['routes through /payments/sessions internally','purpose=fine','SIP2 37/38 fee-paid on capture']},
+ {id:'paysessions',group:'patron',method:'POST',path:'/api/v1/payments/sessions',
+  purpose:'Adyen Sessions flow (ADYEN-INTEGRATION §3): server creates the Adyen session with splits[] (library BalanceAccount + EnvisionWare Commission) and records a PaymentIntentRec. The mock returns fake session material and a ledger row in Created.',
+  schema:{purpose:'"fine"|"fee"|"print"|"room"|"card"','lineItems?':'[{label, value}]',amount:'{value (minor units), currency:"USD"}','returnUrl?':'string'},
+  sample:{purpose:'print',lineItems:[{label:'Resume — 4 pages color',value:200}],amount:{value:200,currency:'USD'}},
+  guards:['Idempotency-Key = orderId','splits mirror on refund','SAQ-A: card data never touches PatronIQ']},
+ {id:'payget',group:'patron',method:'GET',path:'/api/v1/payments/{orderId}',
+  purpose:'Local ledger status for an order — state machine Created → Pending → Authorised → Captured → Refunded, transitioned only by verified webhooks, never by client redirects.',
+  schema:{orderId:'string — from /payments/sessions'},
+  sample:{orderId:'(create a session first)'},
+  guards:['ledger is the truth the UI polls','webhooks drive transitions']},
+ {id:'refund',group:'patron',method:'POST',path:'/api/v1/payments/{orderId}/refunds',
+  purpose:'Refund request (partial ok). Mirrors splits proportionally. The REFUND webhook completes the Captured → Refunded transition — the request itself only acknowledges.',
+  schema:{orderId:'string','amount?':'{value, currency} — omit for full refund'},
+  sample:{orderId:'(captured order id)'},
+  guards:['Idempotency-Key = refundId','only Captured orders','split-aware clawback']},
+ {id:'webhook',group:'patron',method:'POST',path:'/api/v1/webhooks/adyen',
+  purpose:'Adyen notification intake. Watch the annotated pipeline: 1) HMAC verify, 2) immediate [accepted], 3) dedupe on pspReference+eventCode+success, 4) ledger transition — plus SIP2 fee-paid and the metering event on CAPTURE of a fine.',
+  schema:{eventCode:'AUTHORISATION | CAPTURE | REFUND',orderId:'string','success?':'boolean (default true)'},
+  sample:{eventCode:'AUTHORISATION',orderId:'(create a session first)',success:true},
+  guards:['HmacValidator before anything','ack then process async','idempotent — duplicates ignored'],
+  quick:null},
+ {id:'registrations',group:'patron',method:'POST',path:'/api/v1/registrations',
+  purpose:'Event registration against the admin-managed events store. Drop-in events return 400; seat-limited events decrement (mock). Returns a reference code.',
+  schema:{eventId:'string — an event id from /content','patronSessionId?':'string'},
+  sample:{eventId:'soldering'},
+  guards:['drop-in ⇒ 400 event_is_drop_in','sold out ⇒ 409 event_full']},
+ {id:'alerts',group:'patron',method:'POST',path:'/api/v1/alerts',
+  purpose:'Patron escalation → staff alert (SignalR to the admin console in production). Safety is always urgent.',
+  schema:{reason:'account|technology|language|accessibility|safety|other','note?':'string ≤500','conversationId?':'string'},
+  sample:{reason:'account',note:'Card blocked, cannot pick up holds'},
+  guards:['safety ⇒ urgency=urgent','15-minute expiry','emits escalation UsageEvent']},
+ // ---- Admin ----
+ {id:'adminusage',group:'admin',method:'GET',path:'/api/v1/admin/usage',
+  purpose:'Dashboard + billing rollup (R14). Returns the 7-day sample series plus the billing export summary carrying BOTH bases (event counts and $ volume) so the flat-fee vs %-of-transaction fork (D5) stays open.',
+  schema:{'(none)':'GET — tenant scoped; ?from/?to in production'},
+  sample:null, guards:['aggregates only — no PII','nightly StatsDaily rollup feeds this']},
+ {id:'adminmodget',group:'admin',method:'GET',path:'/api/v1/admin/modules',
+  purpose:'ModuleInstance list for this library: status, health, config summary (R15).',
+  schema:{'(none)':'GET'}, sample:null, guards:['tenant scoped']},
+ {id:'adminmodpost',group:'admin',method:'POST',path:'/api/v1/admin/modules',
+  purpose:'Enable a product from the catalog — creates the ModuleInstance row; the module’s AI tools register with the orchestrator automatically (R8/R15). Try P06, P07, P09, P10, P12 or P13.',
+  schema:{pid:'string — catalog product id'},
+  sample:{pid:'P06'},
+  guards:['config-only enablement','health must pass before patron exposure']},
+ {id:'adminqr',group:'admin',method:'POST',path:'/api/v1/admin/qrcodes',
+  purpose:'Mint a QR entry-point for a branch placement; returns the printable slug the signage PDF uses (R1/R13).',
+  schema:{branchId:'string — see /content branches',label:'string — placement'},
+  sample:{branchId:'moore',label:'Teen area'},
+  guards:['scoped tenant → library → branch → kiosk','slug is the scan target']}
+];
+const INTERNALS = [
+  {id:'model',label:'Data model',icon:'db'},
+  {id:'contract',label:'Module contract',icon:'blocks'},
+  {id:'metering',label:'Metering pipeline',icon:'activity'},
+  {id:'adyen',label:'Adyen rail',icon:'card'}
+];
+
+/* =========================================================
+   Mock handlers
+   ========================================================= */
+function hEntry(body){
+  const qr = QRS.find(q=>q.id===body.qrCodeId);
+  if(!qr) return {status:404, body:{error:'unknown_qr', detail:'No QrCode with id '+(body.qrCodeId||'(none)')+' — try qr-nw-entrance'}};
+  const ps = {id:rid('ps'), libraryId:'pioneer', qrCodeId:qr.id, verifiedPatron:null, kioskMode:!!body.kioskMode, expiresAt:new Date(Date.now()+30*60000).toISOString()};
+  SESSIONS[ps.id]=ps;
+  const ue = {id:rid('ue'), tenantId:'t_pioneer', libraryId:'pioneer', qrCodeId:qr.id, type:'qr_scan', meta:{placement:qr.label}, occurredAt:nowIso(), idempotencyKey:rid('idk')};
+  USAGE_EVENTS.push(ue);
+  return {status:200, log:[
+      ['ok','QrCode '+qr.id+' resolved — scope pioneer / '+qr.label],
+      ['ok','PatronSession issued server-side (T8) — TTL 30 min'],
+      ['ok','UsageEvent appended (append-only, idempotency-keyed) — billable qr_scan #'+USAGE_EVENTS.length]
+    ],
+    body:{patronSession:ps, usageEvent:ue, content:'GET /api/v1/content next'}};
+}
+
+/* --- conversations: deterministic Pioneer router (mock) --- */
+function hash(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i)|0; } return h; }
+function routeUtterance(text, history){
+  const q=(text||'').toLowerCase();
+  const prev=(history||[]).map(m=>m.content||'').join(' ').toLowerCase();
+  const way=D.wayfinding||[];
+  if(/\b(yes|book it|sign me up|confirm|do it)\b/.test(q) && /would you like me to (book|sign|register)/.test(prev)){
+    if(/room/.test(prev)) return {route:'transaction',payload:{kind:'room_booking',params:{roomId:'nw-study-1',slot:'15:00'},confirmation_message:'Done — Study Room 1 at Norman West is booked for 3:00 PM today. Confirmation PLS-RB-7K3X9.',levelBeneath:lb('Reservation Service (CloudNine)','P02','POST /bookings',{roomId:'nw-study-1',slot:'15:00',patronRef:'ps_mock'},{bookingId:'RS-88213',status:'confirmed'})}};
+    return {route:'transaction',payload:{kind:'event_registration',params:{eventId:'soldering'},confirmation_message:'You are registered for Learn It! Soldering for Beginners (3:00 PM, Blanchard Maker Corner). Confirmation PLS-PR-Q4T2M.',levelBeneath:lb('CloudNine Events','P04','POST /registrations',{eventId:'soldering'},{refCode:'PLS-PR-Q4T2M',seatsLeft:1})}};
+  }
+  if(/\b(unsafe|emergency|hurt|threat|harass|medical)\b/.test(q)) return {route:'escalate',payload:{request_type:'safety',urgency:'urgent',patron_quote:text,wait_estimate_minutes:1}};
+  if(/\b(talk to|speak to|a (librarian|person|human)|staff member)\b/.test(q)) return {route:'escalate',payload:{request_type:'other',urgency:'normal',patron_quote:text,wait_estimate_minutes:3}};
+  if(/español|espanol|habla/.test(q)) return {route:'escalate',payload:{request_type:'language',urgency:'normal',patron_quote:text,wait_estimate_minutes:3}};
+  if(['fourth wing','iron flame','lessons in chemistry','dune','harry potter'].some(t=>q.includes(t)) && !/\b(book|audiobook|dvd|movie|ebook)\b/.test(q))
+    return {route:'clarify',payload:{question:'Are you looking for the book, the audiobook, the DVD, or the eBook?',suggested_replies:['Book','Audiobook','DVD/movie','eBook']}};
+  if(/print|copies|copy|resume/.test(q)) return {route:'transaction',payload:{kind:'print',params:{},confirmation_message:'Printing is $0.10/page B&W, $0.50/page color. Send from your phone — I can start a job and you pay in the app.',levelBeneath:lb('LPT:One + Print Service','P03/P14','POST /print/quote',{pages:4,color:true},{quote:{value:200,currency:'USD'},jobToken:'PJ-4411'})}};
+  if(/\b(pay|fine|fee)s?\b/.test(q)) return {route:'transaction',payload:{kind:'payment',params:{purpose:'fine'},confirmation_message:'Pioneer is fine-free — fees apply only to lost or damaged items. You can pay any balance right here with card, Google Pay, Apple Pay or Cash App.',levelBeneath:lb('EnvisionWare Payments (Adyen)','SN08','POST /payments/sessions',{purpose:'fine',amount:{value:899,currency:'USD'}},{sessionId:'CS_mock',orderId:'PLS-…'})}};
+  if(/hold(s)?\b/.test(q)){ const wHolds=way.find(x=>x.id==='holds')||{}; return {route:'transaction',payload:{kind:'holds_pickup',confirmation_message:(wHolds.directions||'Holds shelves are near the entrance.')+' Your card is all you need.',levelBeneath:lb('Holds Locker / Cloud9 Self Check','P05/P08','GET /holds/{patron}',{patron:'(hashed)'},{ready:1,queued:1})}}; }
+  if(/self.?check/.test(q)) return {route:'transaction',payload:{kind:'self_check',confirmation_message:'Self-check stations are by the entrance — check out with your card in seconds.',levelBeneath:lb('Cloud9 Self Check','P05','GET /locker/status',{},{online:3})}};
+  if(/(book|reserve).*(room|study|space)|study room/.test(q)) return {route:'clarify',payload:{question:'I can book Study Room 1 at Norman West (seats 4, display + whiteboard) for the 3:00 PM slot today. Would you like me to book it now?',suggested_replies:['Yes, book it','Different time','Different room']}};
+  if(/(sign|register).*(class|event|club|soldering|yoga|lantern)/.test(q)) return {route:'clarify',payload:{question:'I can register you for Learn It! Soldering for Beginners at Blanchard (3:00 PM — 2 seats left). Would you like me to sign you up now?',suggested_replies:['Yes, sign me up','Show other events']}};
+  if(/\b(card|account)\b/.test(q) && /\b(lost|new|get|sign|replace|expired|block)\b/.test(q)) return {route:'answer',payload:{response_html:'<p>Cards are free for residents, workers, students and property owners in Cleveland, McClain and Pottawatomie counties — get a Full Service card in person or an instant Digital Access Card online.</p>',suggested_next:[{label:'Start online signup',action:'open_screen',screen:'account'}]}};
+  const dest = way.find(x=>q.includes(x.id)||q.split(/\W+/).some(t=>t.length>3&&x.label.toLowerCase().includes(t))) || (/(kid|child|toddler|story)/.test(q)? way.find(x=>x.id==='children') : null);
+  if(/where|find|directions|located|get to|area|section|desk|restroom|bathroom/.test(q) && dest) return {route:'wayfind',payload:{destination_id:dest.id,spoken_text:dest.label}};
+  if(/hour|open|close|wifi|internet|parking|today/.test(q)){ const L=D.library||{}; return {route:'answer',payload:{response_html:'<p>'+(L.isOpenNow?'We are open':'We are closed')+' today at '+esc(L.todayBranch||'')+' — hours '+esc(L.todayHours||'')+'. Free WiFi at every branch.</p>',suggested_next:[{label:'Today’s events',action:'open_screen',screen:'attend'}]}}; }
+  return {route:'escalate',payload:{request_type:'other',urgency:'normal',patron_quote:text,wait_estimate_minutes:3},fell:true};
+}
+function hConversation(body){
+  const text=(body.utterance||'').trim();
+  if(!text) return {status:400, body:{error:'empty_utterance'}};
+  const r=routeUtterance(text, body.messages||[]);
+  const inTok=980+Math.round(text.length*1.3), outTok=40+Math.round(JSON.stringify(r.payload).length/3);
+  USAGE_EVENTS.push({id:rid('ue'),type:'ai_turn',libraryId:'pioneer',meta:{route:r.route},occurredAt:nowIso(),idempotencyKey:rid('idk')});
+  return {status:200, body:{route:r.route, payload:r.payload, conversationId:'mock-'+Math.abs(hash(text)).toString(36),
+    debug:{mode:'mock', fellThroughToEscalate:!!r.fell, model:'mock-router', inputTokens:inTok, outputTokens:outTok, latencyMs:11}}};
+}
+function hContent(){
+  return {status:200, body:{library:{slug:'pioneer',name:(D.library||{}).name,finePolicy:(D.library||{}).finePolicy,todayHours:(D.library||{}).todayHours,isOpenNow:(D.library||{}).isOpenNow},
+    branches:D.branches||[], events:D.events||[], rooms:D.rooms||[], services:D.services||[], resources:D.resources||[], wayfinding:D.wayfinding||[]}};
+}
+function findPatron(body){
+  const p=PATRONS.find(x=>x.id===String(body.patronId||'').trim());
+  if(!p||p.pin!==String(body.pin||'').trim()) return null;
+  return p;
+}
+function hAccount(body){
+  const p=findPatron(body);
+  if(!p) return {status:401, body:{error:'invalid_credentials', detail:'Unknown patron id or wrong PIN. Demo: 21000012345678 / 1234'}};
+  const feesTotal=(p.fees||[]).reduce((n,f)=>n+f.amount,0);
+  return {status:200, log:[['ok','SIP2 63/64 patron information — '+p.name+' @ '+p.branch],['ok','verifiedPatron stored as hash on the PatronSession — raw id never persisted']],
+    body:{patron:{name:p.name,homeBranch:p.branch}, checkouts:p.checkouts, holds:p.holds, fees:p.fees, feesTotal:+feesTotal.toFixed(2), feesNote:p.feesNote||'Pioneer is fine-free — fees apply only to lost/damaged items.',
+      guidance:{holdsPickup:((D.wayfinding||[]).find(w=>w.id==='holds')||{}).directions, payFees:feesTotal>0?'POST /api/v1/account/pay-fees':'(no balance — $0 is the normal state here)'}}};
+}
+function makeOrder(purpose, amountMinor, lineItems, patronId){
+  const orderId='PLS-'+Date.now().toString(36).toUpperCase()+(seq++).toString(36).toUpperCase();
+  const psp='PSP'+Math.abs(hash(orderId)).toString(36).toUpperCase().slice(0,10);
+  const commission=Math.round(amountMinor*0.05);
+  const order={orderId, pspReference:psp, purpose, amount:{value:amountMinor,currency:'USD'}, patronId:patronId||null, status:'Created',
+    splits:[{type:'BalanceAccount',to:'Pioneer Library System',value:amountMinor-commission},{type:'Commission',to:'EnvisionWare (liable)',value:commission}],
+    lineItems:lineItems||[], history:[{at:nowIso(),event:'created',note:'PaymentIntentRec created; Idempotency-Key='+orderId}]};
+  LEDGER[orderId]=order; lastOrderId=orderId;
+  return order;
+}
+function hPaySessions(body){
+  const amt=body.amount&&body.amount.value;
+  if(!amt||amt<=0) return {status:400, body:{error:'invalid_amount', detail:'amount.value must be a positive integer of minor units (cents)'}};
+  const order=makeOrder(body.purpose||'fee', amt, body.lineItems);
+  order.status='Pending'; order.history.push({at:nowIso(),event:'session_created',note:'Adyen /sessions created; awaiting shopper'});
+  return {status:200, log:[
+      ['ok','Adyen POST /sessions — merchantAccount EnvisionWare_Platform, reference='+order.orderId+', Idempotency-Key='+order.orderId],
+      ['ok','splits[] attached: BalanceAccount $'+((amt-order.splits[1].value)/100).toFixed(2)+' → library · Commission $'+(order.splits[1].value/100).toFixed(2)+' → EnvisionWare'],
+      ['ok','ledger: Created → Pending (webhooks drive everything after this)']
+    ],
+    body:{sessionId:'CS_'+order.pspReference, sessionData:'Ab02b4c0mockSessionBlob…', clientKey:'test_PIONEER_MOCK', environment:'test',
+      orderId:order.orderId, pspReference:order.pspReference, ledger:{status:order.status}, next:'POST /api/v1/webhooks/adyen {eventCode:"AUTHORISATION", orderId:"'+order.orderId+'"}'}};
+}
+function hPayGet(body){
+  const o=LEDGER[body.orderId];
+  if(!o) return {status:404, body:{error:'order_not_found', detail:lastOrderId?('Try orderId "'+lastOrderId+'"'):'Create a session first (POST /payments/sessions)'}};
+  return {status:200, body:o};
+}
+function hRefund(body){
+  const o=LEDGER[body.orderId];
+  if(!o) return {status:404, body:{error:'order_not_found', detail:lastOrderId?('Try orderId "'+lastOrderId+'"'):'Create + capture an order first'}};
+  if(o.status!=='Captured') return {status:409, body:{error:'invalid_state', detail:'Refunds require status Captured — this order is '+o.status+'. Advance it via /webhooks/adyen.'}};
+  const amt=(body.amount&&body.amount.value)||o.amount.value;
+  const refundId=rid('rf');
+  o.history.push({at:nowIso(),event:'refund_requested',note:'refundId='+refundId+' $'+(amt/100).toFixed(2)+'; Idempotency-Key='+refundId});
+  return {status:202, log:[
+      ['ok','Adyen POST /payments/'+o.pspReference+'/refunds — Idempotency-Key='+refundId],
+      ['ok','splits mirrored proportionally (library + commission clawback)'],
+      ['skip','ledger unchanged ('+o.status+') — the REFUND webhook completes Captured → Refunded']
+    ],
+    body:{refundId, orderId:o.orderId, status:'received', complete:'POST /api/v1/webhooks/adyen {eventCode:"REFUND", orderId:"'+o.orderId+'"}'}};
+}
+const TRANSITIONS={AUTHORISATION:{from:['Created','Pending'],to:'Authorised'},CAPTURE:{from:['Authorised'],to:'Captured'},REFUND:{from:['Captured'],to:'Refunded'}};
+function hWebhook(body){
+  const code=String(body.eventCode||'').toUpperCase();
+  const o=LEDGER[body.orderId];
+  const log=[];
+  log.push(['ok','1. HMAC signature verified (SDK HmacValidator) — OK']);
+  log.push(['ok','2. "[accepted]" returned to Adyen immediately; item enqueued for async processing']);
+  if(!o) return {status:200, log, body:{accepted:true, warning:'order_not_found — notification parked for reconciliation', hint:lastOrderId?('Try orderId "'+lastOrderId+'"'):'Create a session first'}};
+  if(!TRANSITIONS[code]) return {status:200, log, body:{accepted:true, warning:'eventCode '+code+' not handled by this mock (use AUTHORISATION, CAPTURE or REFUND)'}};
+  const success=body.success!==false;
+  const dedupeKey=o.pspReference+':'+code+':'+success;
+  if(WEBHOOK_SEEN.has(dedupeKey)){
+    log.push(['skip','3. dedupe key '+dedupeKey+' — DUPLICATE, ignored (idempotent processing)']);
+    return {status:200, log, body:{accepted:true, deduped:true, ledger:{orderId:o.orderId,status:o.status}}};
+  }
+  WEBHOOK_SEEN.add(dedupeKey);
+  log.push(['ok','3. dedupe key '+dedupeKey+' — new, processing']);
+  const t=TRANSITIONS[code];
+  if(!t.from.includes(o.status)){
+    log.push(['skip','4. transition rejected: '+code+' requires status '+t.from.join('|')+', ledger is '+o.status]);
+    return {status:200, log, body:{accepted:true, applied:false, ledger:{orderId:o.orderId,status:o.status}}};
+  }
+  const fromStatus=o.status;
+  o.status=t.to;
+  o.history.push({at:nowIso(),event:code.toLowerCase(),note:fromStatus+' → '+o.status+' (webhook '+dedupeKey.slice(0,18)+'…)'});
+  log.push(['ok','4. ledger '+o.orderId+': '+fromStatus+' → '+o.status]);
+  const extras={};
+  if(code==='CAPTURE'){
+    USAGE_EVENTS.push({id:rid('ue'),type:'payment',libraryId:'pioneer',meta:{orderId:o.orderId,valueMinor:o.amount.value,purpose:o.purpose},occurredAt:nowIso(),idempotencyKey:dedupeKey});
+    log.push(['ok','5. UsageEvent type=payment ($'+(o.amount.value/100).toFixed(2)+') emitted — metering carries $ volume AND event count (D5)']);
+    if(o.purpose==='fine'&&o.patronId){
+      const p=PATRONS.find(x=>x.id===o.patronId);
+      if(p){ extras.ilsPosted=p.fees.map(f=>f.desc); p.fees=[]; }
+      log.push(['ok','6. SIP2 fee-paid (37/38) posted to the ILS — patron balance cleared']);
+    }
+  }
+  return {status:200, log, body:Object.assign({accepted:true, applied:true, ledger:{orderId:o.orderId,status:o.status,history:o.history}},extras)};
+}
+function hPayFees(body){
+  const p=findPatron(body);
+  if(!p) return {status:401, body:{error:'invalid_credentials', detail:'Demo: 21000012345678 / 1234'}};
+  const total=Math.round((p.fees||[]).reduce((n,f)=>n+f.amount,0)*100);
+  if(total<=0) return {status:400, body:{error:'no_outstanding_fees', detail:p.name+' has a $0 balance — the normal state in a fine-free system.'}};
+  const order=makeOrder('fine', total, (p.fees||[]).map(f=>({label:f.desc,value:Math.round(f.amount*100)})), p.id);
+  order.status='Pending'; order.history.push({at:nowIso(),event:'session_created',note:'pay-fees flow for hashed patron'});
+  return {status:200, log:[
+      ['ok','fees for '+p.name+': $'+(total/100).toFixed(2)+' ('+(p.fees||[]).length+' item)'],
+      ['ok','payment session created — purpose=fine, splits attached'],
+      ['skip','fee stays on the ILS until the CAPTURE webhook posts SIP2 fee-paid']
+    ],
+    body:{orderId:order.orderId, pspReference:order.pspReference, amount:order.amount, sessionId:'CS_'+order.pspReference, ledger:{status:order.status},
+      drive:'POST /webhooks/adyen AUTHORISATION then CAPTURE with orderId "'+order.orderId+'"'}};
+}
+function hRegistrations(body){
+  const ev=(D.events||[]).find(e=>e.id===body.eventId);
+  if(!ev) return {status:404, body:{error:'event_not_found', detail:'Try "soldering", "yoga" or "glass-lantern"'}};
+  if(ev.registration==='drop-in') return {status:400, body:{error:'event_is_drop_in', detail:'"'+ev.title+'" is drop-in — just show up.'}};
+  if(ev.seatsLeft===0) return {status:409, body:{error:'event_full'}};
+  const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let code='';
+  for(let i=0;i<6;i++) code+=A[Math.abs(hash(ev.id+i))%A.length];
+  return {status:200, body:{refCode:'PLS-'+code, event:ev.title, time:ev.time, branch:ev.branch, room:ev.room, seatsLeft:(ev.seatsLeft||1)-1, fulfilledBy:'cloudnine_mock'}};
+}
+function hAlerts(body){
+  const urgent=body.reason==='safety';
+  USAGE_EVENTS.push({id:rid('ue'),type:'escalation',libraryId:'pioneer',meta:{reason:body.reason},occurredAt:nowIso(),idempotencyKey:rid('idk')});
+  return {status:200, body:{alertId:rid('al'), urgency:urgent?'urgent':'normal', waitEstimateMinutes:urgent?1:3, delivery:'SignalR → staff console (mock)', expiresInMinutes:15}};
+}
+function hAdminUsage(){
+  const U=D.usage||{};
+  return {status:200, body:{period:'last 7 days (sample)', days:U.days,
+    series:{qrScans:U.qrScans, appLoads:U.appLoads, aiTurns:U.aiTurns},
+    totals:{qrScans:sum(U.qrScans), appLoads:sum(U.appLoads), aiTurns:sum(U.aiTurns)},
+    routeMix:U.routeMix, features:U.features, escalationReasons:U.escalationReasons, payments:U.payments,
+    billingExport:{basisEvents:sum(U.qrScans)+sum(U.appLoads), basisVolumeUsd:(U.payments||{}).volume, note:'both bases exported — flat-fee vs % fork stays open (D5)'},
+    liveMockEventsThisSession:USAGE_EVENTS.length}};
+}
+function hAdminModGet(){
+  return {status:200, body:{enabled:MODULES.map(m=>({key:m.key,pid:m.pid,name:m.name,status:'enabled',health:m.health,lastHealthCheck:nowIso()})), catalog:CATALOG}};
+}
+function hAdminModPost(body){
+  const p=CATALOG.find(x=>x.pid===String(body.pid||'').toUpperCase());
+  if(!p) return {status:404, body:{error:'unknown_product', detail:'Catalog: '+CATALOG.map(x=>x.pid).join(', ')}};
+  if(MODULES.some(m=>m.pid===p.pid)) return {status:409, body:{error:'already_enabled'}};
+  const inst={key:p.pid.toLowerCase(), pid:p.pid, name:p.name, health:'green', calls:['GET /status']};
+  MODULES.push(inst);
+  return {status:201, log:[['ok','ModuleInstance row created (config jsonb, credentials → secret store)'],['ok','CheckHealthAsync → green'],['ok','module AI tools registered with the orchestrator (R5)']],
+    body:{moduleInstance:{key:inst.key,pid:p.pid,name:p.name,status:'enabled',health:'green'}}};
+}
+function hAdminQr(body){
+  const br=(D.branches||[]).find(b=>b.id===body.branchId);
+  if(!br) return {status:404, body:{error:'unknown_branch', detail:'Branch ids: '+(D.branches||[]).map(b=>b.id).join(', ')}};
+  const label=(body.label||'Entrance').trim();
+  const q={id:'qr-'+br.id+'-'+label.toLowerCase().replace(/\W+/g,'-'), label:br.name+' — '+label, scans7d:0};
+  QRS.push(q);
+  return {status:201, body:{qrCode:q, printableSlug:'https://pioneer.patroniq.app/e/'+q.id, signage:'GET /admin/qrcodes/'+q.id+'/signage.pdf', tryIt:'POST /api/v1/entry {qrCodeId:"'+q.id+'"}'}};
+}
+
+/* --- live Claude for /conversations --- */
+const PROMPT_HEADER='You are PatronIQ, the AI concierge for '+((D.library||{}).name||'the library')+', reached by QR code on a patron’s phone or a kiosk. Speak warmly and concisely. Call EXACTLY ONE tool per turn, preferring clarify > transaction > wayfind > answer > escalate. Never invent events/rooms/services. Escalate only for safety/distress, explicit human requests, or genuinely out-of-context questions.\n\nLIBRARY CONTEXT\n';
+const TOOL_SCHEMAS=[
+ {name:'clarify',description:'Ask ONE follow-up question (info-gathering, or the required confirmation before room_booking/event_registration).',input_schema:{type:'object',properties:{question:{type:'string'},suggested_replies:{type:'array',items:{type:'string'}}},required:['question','suggested_replies']}},
+ {name:'transaction',description:'Fulfil a self-service transaction via an integration module (treat as completed).',input_schema:{type:'object',properties:{kind:{type:'string',enum:['room_booking','event_registration','print','payment','holds_pickup','self_check']},params:{type:'object'},confirmation_message:{type:'string'}},required:['kind','confirmation_message']}},
+ {name:'wayfind',description:'Open the floor map. destination_id MUST match a WAYFINDING id.',input_schema:{type:'object',properties:{destination_id:{type:'string'},spoken_text:{type:'string'}},required:['destination_id','spoken_text']}},
+ {name:'answer',description:'Answer from the context. HTML under 140 words, no bullets.',input_schema:{type:'object',properties:{response_html:{type:'string'},suggested_next:{type:'array',items:{type:'object',properties:{label:{type:'string'},action:{type:'string',enum:['open_screen']},screen:{type:'string',enum:['find','reserve','do','attend','learn','account','help']}},required:['label','action','screen']}}},required:['response_html']}},
+ {name:'escalate',description:'Create a staff alert.',input_schema:{type:'object',properties:{request_type:{type:'string',enum:['account','technology','language','accessibility','safety','other']},urgency:{type:'string',enum:['normal','urgent']},patron_quote:{type:'string'},wait_estimate_minutes:{type:'integer',minimum:1,maximum:15}},required:['request_type','urgency','patron_quote']}}
+];
+function renderContext(){
+  const o=[]; const L=D.library||{};
+  o.push('LIBRARY: '+L.name+' — '+(L.finePolicy||'')+' · '+((D.branches||[]).length)+' branches');
+  o.push('TODAY at '+(L.todayBranch||'')+': '+(L.isOpenNow?'OPEN':'CLOSED')+' '+(L.todayHours||''));
+  o.push('CARD POLICY: '+(L.cardPolicy||''));
+  o.push('\nEVENTS TODAY');(D.events||[]).forEach(e=>o.push('- ['+e.id+'] '+e.title+' — '+e.time+' at '+e.branch+' / '+e.room+' ('+e.registration+(e.seatsLeft!=null?', '+e.seatsLeft+' seats left':'')+')'));
+  o.push('\nBOOKABLE ROOMS');(D.rooms||[]).forEach(r=>o.push('- ['+r.id+'] '+r.name+' at '+r.branch+' (cap '+r.capacity+'; open slots '+(r.slots||[]).join(', ')+')'));
+  o.push('\nSERVICES');(D.services||[]).forEach(s=>o.push('- ['+s.id+'] '+s.name+': '+s.desc));
+  o.push('\nWAYFINDING DESTINATIONS');(D.wayfinding||[]).forEach(w0=>o.push('- ['+w0.id+'] '+w0.label+': '+w0.directions));
+  return o.join('\n');
+}
+async function liveConversation(body){
+  const key=$('#apiKey').value.trim(); if(!key) throw new Error('Add an Anthropic key in the Live mode tab.');
+  const msgs=(body.messages||[]).concat([{role:'user',content:'['+(body.locale||'en')+'] '+body.utterance}]);
+  const t0=performance.now();
+  const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:$('#modelId').value.trim(),max_tokens:400,temperature:0.2,system:PROMPT_HEADER+renderContext(),tools:TOOL_SCHEMAS,tool_choice:{type:'any'},messages:msgs})});
+  if(!res.ok) return {status:res.status, body:{error:'anthropic_error', detail:(await res.text()).slice(0,300)}};
+  const data=await res.json(); const tu=(data.content||[]).find(b=>b.type==='tool_use');
+  return {status:200, body:{route:tu?tu.name:'escalate', payload:tu?tu.input:{request_type:'other',urgency:'normal',patron_quote:body.utterance,wait_estimate_minutes:3},
+    debug:{mode:'live',model:data.model,inputTokens:data.usage&&data.usage.input_tokens,outputTokens:data.usage&&data.usage.output_tokens,latencyMs:Math.round(performance.now()-t0)}}};
+}
+
+const HANDLERS={entry:hEntry,conversations:hConversation,content:hContent,account:hAccount,payfees:hPayFees,
+  paysessions:hPaySessions,payget:hPayGet,refund:hRefund,webhook:hWebhook,registrations:hRegistrations,alerts:hAlerts,
+  adminusage:hAdminUsage,adminmodget:hAdminModGet,adminmodpost:hAdminModPost,adminqr:hAdminQr};
+
+/* =========================================================
+   Views
+   ========================================================= */
+let current='conversations';
+function renderNav(){
+  const nb=$('#navBody');
+  const link=(e)=>'<a class="'+(current===e.id?'active':'')+'" data-ep="'+e.id+'"><span class="p">'+esc(e.path.replace('/api/v1',''))+'</span><span class="method m-'+e.method.toLowerCase()+'">'+e.method+'</span></a>';
+  nb.innerHTML='<h4>Patron API — /api/v1</h4>'+EP.filter(e=>e.group==='patron').map(link).join('')+
+    '<h4>Admin API — /api/v1/admin</h4>'+EP.filter(e=>e.group==='admin').map(link).join('')+
+    '<h4>Internals</h4>'+INTERNALS.map(v=>'<a class="'+(current===v.id?'active':'')+'" data-ep="'+v.id+'"><span>'+v.label+'</span></a>').join('');
+  nb.querySelectorAll('a[data-ep]').forEach(a=>a.onclick=()=>{ current=a.dataset.ep; $('#nav').classList.remove('open'); draw(); });
+}
+function setHead(html,right){ $('#headPath').innerHTML=html; $('#headRight').innerHTML=right||''; }
+function draw(){
+  renderNav();
+  const w=$('#wrap'); w.innerHTML='';
+  const ep=EP.find(e=>e.id===current);
+  if(ep) return drawEndpoint(ep,w);
+  if(current==='model') return drawModel(w);
+  if(current==='contract') return drawContract(w);
+  if(current==='metering') return drawMetering(w);
+  if(current==='adyen') return drawAdyen(w);
+}
+
+function drawEndpoint(ep,w){
+  setHead('<span class="method m-'+ep.method.toLowerCase()+'">'+ep.method+'</span><span>'+esc(ep.path)+'</span>','<span class="pill p-mock">MOCK</span>');
+  w.append(el('p','desc',esc(ep.purpose)));
+  const sc=el('div','card','<h3>Request</h3>');
+  const tb=el('table','','<thead><tr><th>Field</th><th>Type / values</th></tr></thead>');
+  const bodyEl=el('tbody');
+  Object.entries(ep.schema).forEach(([k,v])=>bodyEl.append(el('tr','','<td><code>'+esc(k)+'</code></td><td>'+esc(v)+'</td>')));
+  tb.append(bodyEl); sc.append(tb); w.append(sc);
+  if(ep.guards){ const g=el('div','card','<h3>Guardrails / behavior</h3>'); g.innerHTML+=ep.guards.map(x=>'<span class="pill p-mock">'+esc(x)+'</span>').join(''); w.append(g); }
+  const tryc=el('div','card','<h3>Try it</h3>');
+  if(ep.sample!==null){
+    const ta=el('textarea'); ta.id='reqBody'; ta.rows=Math.min(11,JSON.stringify(ep.sample,null,2).split('\n').length+1); ta.value=JSON.stringify(ep.sample,null,2); tryc.append(ta);
+    if(ep.quick){ const ch=el('div','chips'); ep.quick.forEach(q=>{ const c=el('span','chip',esc(q)); c.onclick=()=>{ ta.value=JSON.stringify({utterance:q,locale:'en'},null,2); }; ch.append(c); }); tryc.append(ch); }
+    if(ep.id==='webhook'||ep.id==='payget'||ep.id==='refund'){
+      const ch=el('div','chips');
+      if(ep.id==='webhook'){ ['AUTHORISATION','CAPTURE','REFUND'].forEach(ev=>{ const c=el('span','chip',ev+(lastOrderId?' → last order':'')); c.onclick=()=>{ ta.value=JSON.stringify({eventCode:ev,orderId:lastOrderId||'(create a session first)',success:true},null,2); }; ch.append(c); }); }
+      else { const c=el('span','chip','Use last order id'); c.onclick=()=>{ const o=JSON.parse(ta.value||'{}'); o.orderId=lastOrderId||'(none yet)'; ta.value=JSON.stringify(o,null,2); }; ch.append(c); }
+      tryc.append(ch);
+    }
+  } else {
+    tryc.append(el('p','desc','GET — no request body.'));
+  }
+  const acts=el('div','row-actions');
+  const send=el('button','btn',ic('send')+'Send request'); send.onclick=()=>runEndpoint(ep); acts.append(send);
+  if(ep.id==='conversations') acts.append(el('span','desc','Live toggle in the dock →'));
+  const nc=el('button','btn ghost sm',ic('note')+'Note this endpoint'); nc.onclick=()=>{ $('#noteInput').focus(); $('#noteInput').placeholder='Note about: '+ep.method+' '+ep.path; openDock('notes'); };
+  acts.append(nc); tryc.append(acts);
+  tryc.append(el('div','','<div id="respBox"></div>'));
+  w.append(tryc);
+}
+async function runEndpoint(ep){
+  const box=$('#respBox'); box.innerHTML='<p class="desc">Running…</p>';
+  let body={};
+  if(ep.sample!==null){ try{ body=JSON.parse($('#reqBody').value||'{}'); }catch(e){ box.innerHTML='<pre>Invalid JSON in request body</pre>'; return; } }
+  let r;
+  try{
+    if(ep.id==='conversations' && $('#liveOn').checked) r=await liveConversation(body);
+    else r=HANDLERS[ep.id](body);
+  }catch(e){ r={status:500, body:{error:'client_error', detail:String(e.message||e)}}; }
+  const cls=r.status<300?'st-2':r.status<500?'st-4':'st-5';
+  let html='<div class="row-actions"><span class="status '+cls+'">'+r.status+'</span><span class="desc" style="margin:0">'+(ep.id==='conversations'&&$('#liveOn').checked?'live':'mock')+'</span></div>';
+  if(r.log) html+='<div class="loglines">'+r.log.map(l=>'<div class="logline '+l[0]+'"><span>'+esc(l[1])+'</span></div>').join('')+'</div>';
+  html+='<pre>'+jsonHi(r.body)+'</pre>';
+  box.innerHTML=html;
+}
+
+/* ---------- Internals: data model (§3) ---------- */
+function drawModel(w){
+  setHead('Data model','<span class="pill p-mock">DOTNET-BLUEPRINT §3</span>');
+  w.append(el('p','desc','EF Core 8 + PostgreSQL. The five spine entities port as-is; nine additions carry tenancy, metering, modules, payments and theming. UsageEvents are append-only, idempotency-keyed, partitioned by month.'));
+  const models=[
+   ['Tenant','addition',[['id','uuid PK'],['name','string — EnvisionWare-level customer (a library system)'],['billingAnchor','string'],['libraries','Library[] (owns)']]],
+   ['Library','ported',[['slug','string unique'],['name / timezone','string'],['supportedLocales / defaultLocale','string[] / string'],['aiEnabled','bool'],['tokenBudgetMonthly / tokenUsedCurrentPeriod','int'],['tenantId','FK → Tenant']]],
+   ['Branch','ported',[['libraryId','FK → Library'],['slug / name','string'],['address / phone','string?'],['tier','large|mid|small|lab']]],
+   ['Kiosk','ported',[['branchId','FK → Branch'],['name / floor / locationLabel','string'],['bootstrapTokenHash','string?'],['lastSeenAt','timestamptz?']]],
+   ['StaffUser','addition',[['id','uuid PK'],['tenantId','FK → Tenant'],['email','string unique'],['identity','local | external IdP subject (Entra/Google/OIDC/SAML — D4)'],['roles','Role[] — EnvisionWareSupport | LibraryAdmin | BranchManager | Staff (R12)']]],
+   ['QrCode','addition',[['id','string PK (printable slug)'],['scope','tenant/library/branch/kiosk'],['label','string — placement'],['createdBy','FK → StaffUser'],['note','entry-point identity (R1); signed in production (T7)']]],
+   ['PatronSession','addition',[['id','uuid PK — server-issued (fixes T8)'],['libraryId','FK'],['qrCodeId','FK? → QrCode'],['verifiedPatron','string? — hashed patron id, never raw'],['expiresAt','timestamptz']]],
+   ['UsageEvent','addition',[['id','uuid PK'],['tenantId / libraryId / branchId? / kioskId? / qrCodeId?','FKs'],['type','qr_scan | app_load | session_start | feature_use | ai_turn | escalation | transaction | payment'],['meta','jsonb'],['occurredAt','timestamptz (month-partitioned)'],['idempotencyKey','string unique — append-only, immutable (R14/T22)']]],
+   ['Conversation','ported',[['library/branch/kioskId','FK denormalized'],['patronSessionId','string'],['utterance / route / payloadJson','string / enum / jsonb'],['inputTokens / outputTokens / latencyMs','int'],['model','string']]],
+   ['Alert','ported',[['library/branch/kioskId','FK'],['patronQuote','string'],['requestType','account|technology|language|accessibility|safety|other'],['urgency / status','normal|urgent / active|acknowledged|auto_escalated|expired'],['expiresAt','timestamptz — 15 min']]],
+   ['ModuleInstance','addition',[['id','uuid PK'],['scope','tenant/library'],['moduleKey','pcres | print | rooms | circulation | payments | …'],['status','enabled|disabled'],['config','jsonb (credentials → secret store)'],['lastHealthCheck','timestamptz (R8/R15)']]],
+   ['KnowledgeDoc','addition',[['libraryId','FK'],['slug / title','string'],['body','markdown'],['tags','string[]'],['published','bool — grounds the AI (R10)']]],
+   ['PaymentIntentRec','addition',[['orderId','string PK'],['amount / currency / purpose','int minor / USD / fine|print|room|card'],['status','Created → Pending → Authorised → Captured → Refunded/Failed'],['pspReference','string'],['splits','jsonb — BalanceAccount + Commission (R4/SN08)']]],
+   ['ThemeConfig','addition',[['libraryId','FK unique'],['logoUrl','string'],['palette','jsonb tokens'],['displayName','string'],['poweredByLock','bool always true — contractual (R7)']]]
+  ];
+  models.forEach(([m,kind,fields])=>{
+    const c=el('div','card','<h3>'+m+' <span class="pill '+(kind==='ported'?'p-ok':'p-mock')+'">'+(kind==='ported'?'ported from spine':'new')+'</span></h3>');
+    const t=el('table','','<thead><tr><th>Field</th><th>Type / notes</th></tr></thead>');
+    const b=el('tbody');
+    fields.forEach(([f,ty])=>b.append(el('tr','','<td><code>'+esc(f)+'</code></td><td>'+esc(ty)+'</td>')));
+    t.append(b); c.append(t); w.append(c);
+  });
+}
+
+/* ---------- Internals: module contract (§4) ---------- */
+function drawContract(w){
+  setHead('Module contract','<span class="pill p-mock">DOTNET-BLUEPRINT §4</span>');
+  w.append(el('p','desc','Every EnvisionWare product plugs in behind one interface pair. Modules register AI tools; the orchestrator composes them; every ToolResult carries a LevelBeneath block that powers the R9 "level beneath" views for free.'));
+  const c1=el('div','card','<h3>IIntegrationModule (C#)</h3>');
+  c1.append(el('pre','',esc(
+'public interface IIntegrationModule {\n'+
+'  string Key { get; }                      // "pcres", "print", "rooms", "circulation", "payments"\n'+
+'  string ProductName { get; }              // "PC Reservation(R)" — surfaces in level-beneath views\n'+
+'  string ProductId { get; }                // Celsus register id: "P01"…\n'+
+'  Task<ModuleHealth> CheckHealthAsync(ModuleConfig cfg, CancellationToken ct);\n'+
+'  IReadOnlyList<AiToolDefinition> Tools { get; }        // what the orchestrator may invoke\n'+
+'  IReadOnlyList<PatronCapability> Capabilities { get; } // what the patron UI renders\n'+
+'  Task<ToolResult> ExecuteAsync(ToolCall call, PatronContext ctx, CancellationToken ct);\n'+
+'}')));
+  w.append(c1);
+  const c2=el('div','card','<h3>Example ToolResult — rooms.book</h3>');
+  c2.append(el('pre','',jsonHi({ok:true,message:'Study Room 1 booked for 3:00 PM today.',
+    data:{bookingId:'RS-88213',roomId:'nw-study-1',slot:'15:00'},
+    levelBeneath:{product:'Reservation Service (CloudNine)',productId:'P02',endpoint:'POST /bookings',
+      request:{roomId:'nw-study-1',slot:'15:00',patronRef:'ps_9f2c(hashed)'},
+      response:{bookingId:'RS-88213',status:'confirmed'}}})));
+  w.append(c2);
+  const c3=el('div','card','<h3>Rules</h3>');
+  c3.innerHTML+='<table><tbody>'+
+    '<tr><td><code>Tools</code></td><td>e.g. <code>pcres.reserve_session</code>, <code>print.submit_job</code>, <code>rooms.book</code>, <code>circulation.locate_hold</code>, <code>payments.create_payment</code> — adding a product = adding tools (R5 AI-native)</td></tr>'+
+    '<tr><td><code>LevelBeneath</code></td><td>every ToolResult carries product name + logical endpoint + request/response snapshot — no per-feature work for R9</td></tr>'+
+    '<tr><td>Enablement</td><td>config-only: a ModuleInstance row turns a module on (R8); admin "+" creates it (R15)</td></tr>'+
+    '<tr><td>Mock first</td><td>mock adapters ship at spine parity; real adapters replace transport only — contract, tools, UI fixed</td></tr>'+
+    '</tbody></table>';
+  w.append(c3);
+  const c4=el('div','card','<h3>Enabled today (this demo dataset)</h3>');
+  c4.innerHTML+='<table><thead><tr><th>Module</th><th>P-ID</th><th>Sample calls</th></tr></thead><tbody>'+
+    MODULES.map(m=>'<tr><td><b>'+esc(m.name)+'</b></td><td><code>'+esc(m.pid)+'</code></td><td>'+(m.calls||[]).map(x=>'<code>'+esc(x)+'</code>').join(' ')+'</td></tr>').join('')+'</tbody></table>';
+  w.append(c4);
+}
+
+/* ---------- Internals: metering (§3/R14/D5) ---------- */
+function drawMetering(w){
+  setHead('Metering pipeline','<span class="pill p-mock">R14 / D5</span>');
+  w.append(el('p','desc','Meter everything, price later. Every countable thing becomes an immutable UsageEvent; the rollup feeds dashboards and the billing export.'));
+  const c1=el('div','card','<h3>Event types</h3>');
+  c1.innerHTML+='<table><thead><tr><th>type</th><th>Emitted when</th><th>Billable basis</th></tr></thead><tbody>'+
+    [['qr_scan','patron scans a posted QR (POST /entry)','yes — entry count'],
+     ['app_load','PWA/kiosk boot without a scan','yes — entry count'],
+     ['session_start','PatronSession issued','rollup'],
+     ['feature_use','patron opens a feature surface','rollup'],
+     ['ai_turn','each /conversations turn','rollup + token cost'],
+     ['escalation','staff alert created','rollup'],
+     ['transaction','a module executes a committing tool','rollup'],
+     ['payment','CAPTURE webhook confirms funds','yes — $ volume']]
+    .map(r=>'<tr><td><code>'+r[0]+'</code></td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('')+'</tbody></table>';
+  w.append(c1);
+  const c2=el('div','card','<h3>Pipeline</h3><div class="flow">'+
+    fstep(1,'Emit','Every producer writes with an Idempotency-Key — retries can never double-bill (T22).')+
+    fstep(2,'Append','UsageEvent is append-only and immutable, partitioned by month. Nobody updates history.')+
+    fstep(3,'Roll up','Nightly job builds StatsDaily per tenant/library/branch — the dashboards read this, never the raw table.')+
+    fstep(4,'Export','Billing export view per tenant per period.',true)+
+    '</div>');
+  w.append(c2);
+  const c3=el('div','card','<h3>The D5 note — both bases, always</h3>');
+  c3.innerHTML+='<p class="desc" style="margin-bottom:10px">SN08 has not picked between <b>flat-fee</b> and <b>3–4% of transaction volume</b>. So the export carries BOTH bases side by side — event counts AND $ volume — and pricing stays a config decision, not a re-instrumentation project.</p>'+
+    '<pre>'+jsonHi({tenant:'pioneer',period:'2026-07',basisEvents:{qr_scan:1746,app_load:3037},basisVolume:{payments:126,volumeUsd:512.40},pick:'flat_fee | pct_of_volume — later'})+'</pre>';
+  w.append(c3);
+  const c4=el('div','card','<h3>Live in this mock session</h3>');
+  c4.innerHTML+='<p class="desc" style="margin-bottom:8px">'+USAGE_EVENTS.length+' UsageEvents appended so far by your try-it calls (entry, conversations, alerts, captures).</p>'+
+    (USAGE_EVENTS.length?'<pre>'+jsonHi(USAGE_EVENTS.slice(-5))+'</pre>':'');
+  w.append(c4);
+}
+function fstep(n,title,desc,last){
+  return '<div class="fstep"><div class="rail"><span class="nodenum">'+n+'</span>'+(last?'':'<span class="vline"></span>')+'</div><div class="fbody"><b>'+title+'</b><div class="fd">'+desc+'</div></div></div>';
+}
+
+/* ---------- Internals: Adyen rail (SN08) ---------- */
+function drawAdyen(w){
+  setHead('Adyen rail','<span class="pill p-mock">ADYEN-INTEGRATION §3 / SN08</span>');
+  const A=D.adyen||{};
+  w.append(el('p','desc','Adyen for Platforms: EnvisionWare is the platform, each library a balance account. '+(A.flow||'Sessions + Components')+' · PCI '+(A.pci||'SAQ-A')+'. The ledger is transitioned only by verified webhooks — never by client redirects.'));
+  const c1=el('div','card','<h3>Flow</h3><div class="flow">'+
+    fstep(1,'PWA PaymentSheet','Patron taps Pay — card component + wallet buttons in our branded layout; Cash App shows a QR on kiosks.')+
+    fstep(2,'POST /payments/sessions','Server creates the Adyen session: reference=orderId, splits[], Idempotency-Key=orderId. Ledger: Created → Pending.')+
+    fstep(3,'Components mount','Adyen iframes collect card data — it never touches PatronIQ (SAQ-A). 3DS2 handled inside.')+
+    fstep(4,'Webhook intake','HMAC verify → ack [accepted] → dedupe on pspReference+eventCode+success → process async.')+
+    fstep(5,'Ledger transitions','AUTHORISATION → Authorised · CAPTURE → Captured · REFUND → Refunded. The UI polls GET /payments/{orderId}.')+
+    fstep(6,'On capture of a fine','SIP2 fee-paid posts to the ILS and a payment UsageEvent records the $ volume (D5).',true)+
+    '</div>');
+  w.append(c1);
+  const c2=el('div','card','<h3>Splits — every payment, mirrored on refund</h3>');
+  c2.innerHTML+='<p class="desc" style="margin-bottom:6px">$8.99 lost-item fee, illustrative 5% commission:</p>'+
+    '<div class="splitbar"><div style="flex:95;background:#46166B">Pioneer Library System · $8.54</div><div style="flex:5;background:#1E6093" title="EnvisionWare commission">$0.45</div></div>'+
+    '<div class="desc" style="margin:0">BalanceAccount → library funds · Commission → EnvisionWare liable account. One platform contract aggregates all libraries’ volume.</div>';
+  w.append(c2);
+  const c3=el('div','card','<h3>Methods & webhooks</h3>');
+  c3.innerHTML+='<div style="margin-bottom:8px">'+(A.methods||[]).map(m=>'<span class="pill p-mock">'+esc(m)+'</span>').join('')+'</div>'+
+    '<div>'+(A.webhooks||[]).map(x=>'<span class="pill p-ok">'+esc(x)+'</span>').join('')+'</div>'+
+    '<p class="desc" style="margin:10px 0 0">State machine:</p><div class="statechain"><span class="st">Created</span><span class="arr">→</span><span class="st">Pending</span><span class="arr">→</span><span class="st">Authorised</span><span class="arr">→</span><span class="st">Captured</span><span class="arr">→</span><span class="st">Refunded</span></div>';
+  w.append(c3);
+  const c4=el('div','card','<h3>Try the whole rail</h3>');
+  c4.innerHTML+='<ol style="margin:0;padding-left:20px;font-size:13.5px;color:var(--ink-muted);line-height:1.9">'+
+    '<li><code>POST /payments/sessions</code> — creates the ledger row</li>'+
+    '<li><code>POST /webhooks/adyen</code> AUTHORISATION, then CAPTURE — watch HMAC/dedupe/transition log lines</li>'+
+    '<li><code>GET /payments/{orderId}</code> — full history</li>'+
+    '<li><code>POST /payments/{orderId}/refunds</code> then the REFUND webhook</li>'+
+    '<li>Or start from a patron: <code>GET /account/summary</code> → <code>POST /account/pay-fees</code> → webhooks → the fee clears via SIP2</li></ol>';
+  w.append(c4);
+}
+
+/* ---------- notes dock (shared piq_notes) ---------- */
+let notes=JSON.parse(localStorage.getItem('piq_notes')||'[]');
+function saveNotes(){ localStorage.setItem('piq_notes',JSON.stringify(notes)); }
+function renderNotes(){
+  const c=$('#noteList'); c.innerHTML='';
+  notes.forEach((n,i)=>{
+    const d=el('div','note','<button class="x" data-i="'+i+'" aria-label="Delete note">'+ic('x')+'</button><div class="meta">'+esc(n.context||'')+'</div>'+esc(n.text));
+    c.append(d);
+  });
+  c.querySelectorAll('.x').forEach(x=>x.onclick=()=>{ notes.splice(+x.dataset.i,1); saveNotes(); renderNotes(); });
+}
+$('#addNote').onclick=()=>{
+  const t=$('#noteInput').value.trim(); if(!t) return;
+  notes.push({text:t,context:'backend · '+($('#noteInput').placeholder.indexOf('Note about: ')===0?$('#noteInput').placeholder.replace('Note about: ',''):current)});
+  saveNotes(); renderNotes(); $('#noteInput').value=''; $('#noteInput').placeholder="e.g. 'pay-fees should support partial payment'";
+};
+$('#clearNotes').onclick=()=>{ if(confirm('Clear all notes?')){ notes=[]; saveNotes(); renderNotes(); } };
+$('#copyNotes').onclick=()=>{
+  if(!notes.length){ toast('No notes yet.'); return; }
+  let md='# PatronIQ backend mock — iteration request\n\n';
+  notes.forEach((n,i)=>md+=(i+1)+'. '+n.text+'  _('+(n.context||'')+')_\n');
+  navigator.clipboard.writeText(md).then(()=>toast('Copied — paste into chat'));
+};
+
+/* ---------- dock/nav plumbing ---------- */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>openDock(t.dataset.pane));
+function openDock(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.pane===name));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+name));
+  $('#dock').classList.add('open');
+}
+$('#dockFab').onclick=()=>$('#dock').classList.toggle('open');
+$('#navFab').onclick=()=>$('#nav').classList.toggle('open');
+
+renderNotes(); draw();
+</script>
+<script src="../workbench-data/notes-sync.js"></script>
+</body>
+</html>

@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PatronIQ Admin · Pioneer Library System</title>
+<style>
+  :root{
+    --primary:#67338E;--primary-strong:#46166B;--primary-soft:#F3EDF8;--primary-line:#DCCDE9;
+    --accent:#1B96D4;--accent-deep:#1E6093;--accent-tint:#45B1E7;--accent-soft:#E7F4FB;
+    --orange:#FF8300;--highlight:#FBD20A;
+    --ink:#23242A;--ink-muted:#515462;--ink-faint:#7A7D8A;
+    --surface:#FFFFFF;--bg:#F7F7F7;--line:#E5E2EA;
+    --success:#15803D;--success-soft:#DCFCE7;
+    --warning:#B45309;--warning-soft:#FEF3C7;
+    --danger:#B91C1C;--danger-soft:#FEE2E2;
+    --focus:#1B96D4;
+    --dock-bg:#291640;--dock-panel:#33204D;--dock-line:#463060;--dock-ink:#EDE6F4;--dock-muted:#B9A6CE;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font:14px/1.55 'Alexandria','Segoe UI',system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--bg)}
+  :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}
+  a{color:var(--accent-deep)}
+  svg.ic{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+  button{font-family:inherit}
+
+  /* ---------- login ---------- */
+  .login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(150deg,var(--primary-strong),var(--primary) 55%,#7B4BA0);padding:24px}
+  .login-card{background:var(--surface);border-radius:18px;box-shadow:0 24px 60px rgba(35,20,60,.35);width:min(440px,94vw);padding:34px 36px 28px}
+  .login-card .mark{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .lg-logo{width:42px;height:42px;border-radius:11px;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:700;font-size:20px}
+  .login-card h1{margin:0;font-size:22px;font-weight:600}
+  .login-card .lib{color:var(--ink-muted);font-size:14px;margin:0 0 20px}
+  .lfield{margin-bottom:12px}
+  .lfield label{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+  .lfield input,.lfield select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff;color:var(--ink)}
+  .roles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 16px}
+  .rolebtn{border:1.5px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;cursor:pointer;text-align:left;font-size:13px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .rolebtn svg.ic{width:16px;height:16px;color:var(--ink-muted)}
+  .rolebtn.sel{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-strong)}
+  .rolebtn.sel svg.ic{color:var(--primary)}
+  .btn{border:0;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;background:var(--primary);color:#fff;display:inline-flex;align-items:center;gap:8px}
+  .btn:hover{background:var(--primary-strong)}
+  .btn.ghost{background:#fff;color:var(--primary-strong);border:1px solid var(--primary-line)}
+  .btn.ghost:hover{background:var(--primary-soft)}
+  .btn.sm{padding:6px 11px;font-size:13px;border-radius:8px}
+  .btn.full{width:100%;justify-content:center}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .sso{display:grid;gap:8px;margin-top:14px}
+  .divider{display:flex;align-items:center;gap:10px;color:var(--ink-faint);font-size:12px;margin:16px 0 0;text-transform:uppercase;letter-spacing:.06em}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+  .login-foot{margin-top:20px;font-size:12px;color:var(--ink-faint);text-align:center}
+
+  /* ---------- app shell ---------- */
+  .app{display:none;grid-template-columns:236px 1fr 360px;height:100vh}
+  .app.on{display:grid}
+  @media (max-width:1280px){.app.on{grid-template-columns:236px 1fr}.dock{display:none}.dock.open{display:flex;position:fixed;inset:0 0 0 auto;width:min(400px,94vw);z-index:70;box-shadow:-12px 0 40px rgba(20,8,35,.4)}}
+  @media (max-width:880px){.app.on{grid-template-columns:1fr}.sidenav{display:none}.sidenav.open{display:flex;position:fixed;inset:0 auto 0 0;width:250px;z-index:70;box-shadow:12px 0 40px rgba(20,8,35,.25)}}
+
+  .sidenav{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:auto}
+  .sidenav .brand{display:flex;align-items:center;gap:10px;padding:16px 16px 14px;border-bottom:1px solid var(--line)}
+  .sidenav .brand .lg-logo{width:34px;height:34px;font-size:16px;border-radius:9px}
+  .sidenav .brand b{font-size:15px;display:block;line-height:1.2}
+  .sidenav .brand span{font-size:11.5px;color:var(--ink-muted)}
+  .sidenav h4{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin:16px 16px 6px;font-weight:600}
+  .navitem{display:flex;align-items:center;gap:11px;padding:9px 16px;color:var(--ink-muted);cursor:pointer;font-size:13.5px;font-weight:600;border:0;background:none;width:100%;text-align:left;border-left:3px solid transparent}
+  .navitem svg.ic{width:18px;height:18px}
+  .navitem:hover{background:var(--primary-soft);color:var(--primary-strong)}
+  .navitem.active{background:var(--primary-soft);color:var(--primary-strong);border-left-color:var(--primary)}
+  .navitem.locked{color:#B4B0BD;cursor:not-allowed}
+  .navitem.locked:hover{background:none;color:#B4B0BD}
+  .navitem .lockic{margin-left:auto}.navitem .lockic svg.ic{width:14px;height:14px}
+  .sidenav .foot{margin-top:auto;padding:14px 16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-faint)}
+  .sidenav .foot b{color:var(--ink-muted)}
+
+  .main{overflow:auto;background:var(--bg)}
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:12px 26px;display:flex;align-items:center;gap:12px}
+  .topbar h1{font-size:17px;font-weight:600;margin:0}
+  .topbar .grow{flex:1}
+  .rolechip{display:inline-flex;align-items:center;gap:7px;background:var(--primary-soft);color:var(--primary-strong);font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:999px}
+  .rolechip svg.ic{width:14px;height:14px}
+  .iconbtn{border:1px solid var(--line);background:#fff;border-radius:9px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;color:var(--ink-muted)}
+  .iconbtn:hover{border-color:var(--primary-line);color:var(--primary)}
+  .wrap{max-width:1060px;margin:0 auto;padding:22px 26px 90px}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:6px}
+  .b-sample{background:var(--warning-soft);color:var(--warning)}
+  .b-mock{background:var(--accent-soft);color:var(--accent-deep)}
+  .b-pass{background:var(--success-soft);color:var(--success)}
+  .b-warn{background:var(--warning-soft);color:var(--warning)}
+  .b-fail{background:var(--danger-soft);color:var(--danger)}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+  .card h2{margin:0 0 2px;font-size:16px;font-weight:600;display:flex;align-items:center;gap:9px}
+  .card .desc{color:var(--ink-muted);font-size:13px;margin:0 0 14px}
+  .cardrow{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:860px){.cardrow{grid-template-columns:1fr}}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  @media (max-width:860px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;position:relative}
+  .kpi .l{font-size:12px;color:var(--ink-muted);font-weight:600}
+  .kpi .v{font-size:26px;font-weight:600;margin-top:2px}
+  .kpi .m{font-size:12px;color:var(--ink-faint);margin-top:1px}
+  .kpi svg.spark{position:absolute;right:14px;top:16px}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted);font-weight:600}
+  td .mono,.mono{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;color:var(--ink-muted)}
+  tr:last-child td{border-bottom:0}
+
+  .tabs2{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:16px;flex-wrap:wrap}
+  .tab2{border:0;background:none;padding:9px 14px;font-size:13.5px;font-weight:600;color:var(--ink-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab2.active{color:var(--primary-strong);border-bottom-color:var(--primary)}
+
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:2px}
+  .d-green{background:var(--success)}.d-amber{background:var(--warning)}.d-gray{background:#B4B0BD}
+
+  .modgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+  .modcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .modcard h3{margin:0;font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .modcard .pid{font-size:11px;font-weight:700;color:var(--primary-strong);background:var(--primary-soft);border-radius:5px;padding:1px 7px}
+  .modcard .lastcall{background:#F4F1F8;border-radius:8px;padding:7px 10px;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--ink-muted);margin:10px 0;overflow-x:auto;white-space:nowrap}
+  .modcard .acts{display:flex;gap:8px;flex-wrap:wrap}
+
+  .swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .swatch{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+  .swatch .chip{height:56px;display:flex;align-items:flex-end;padding:8px 10px;font-size:12px;font-weight:600}
+  .swatch .info{padding:10px 12px}
+  .swatch .info b{font-size:13px}
+  .swatch .info .mono{display:block;margin:2px 0 6px}
+
+  .insight{border-left:4px solid var(--primary);background:var(--surface);border-radius:12px;border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 18px;margin-bottom:12px}
+  .insight p{margin:0 0 10px;font-size:14px}
+  .insight .agg{display:none;background:#F4F1F8;border-radius:9px;padding:10px 14px;margin:0 0 10px}
+  .insight .agg.open{display:block}
+  .insight .agg table{font-size:12.5px}
+
+  .chartlegend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-muted);margin-bottom:8px}
+  .chartlegend .key{display:inline-flex;align-items:center;gap:6px}
+  .key i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .key i.line{height:3px;border-radius:2px;width:16px}
+
+  .alert-item{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:12px 15px;margin-bottom:10px;background:var(--surface)}
+  .alert-item .body{flex:1}
+  .alert-item .q{font-size:14px;margin:1px 0 3px}
+  .alert-item .meta{font-size:12px;color:var(--ink-faint)}
+  .u-urgent{background:var(--danger-soft);color:var(--danger)}
+  .u-normal{background:var(--accent-soft);color:var(--accent-deep)}
+
+  dialog{border:0;border-radius:16px;padding:0;box-shadow:0 24px 70px rgba(25,10,45,.35);width:min(520px,94vw)}
+  dialog::backdrop{background:rgba(30,15,50,.45)}
+  .dlg-head{padding:16px 22px 0;display:flex;align-items:center;justify-content:space-between}
+  .dlg-head h3{margin:0;font-size:16px;font-weight:600}
+  .dlg-body{padding:14px 22px 20px}
+  .dlg-foot{padding:0 22px 20px;display:flex;gap:8px;justify-content:flex-end}
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  @media (max-width:560px){.fgrid{grid-template-columns:1fr}}
+  .fgrid .full{grid-column:1/-1}
+  .f label{display:block;font-size:12.5px;font-weight:600;margin-bottom:3px}
+  .f input,.f select,.f textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;font-family:inherit;background:#fff;color:var(--ink)}
+
+  .stepper{display:flex;flex-direction:column;gap:0;margin:8px 0}
+  .step{display:flex;gap:12px;align-items:flex-start;padding:8px 0}
+  .step .bub{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--ink-faint);flex:none;background:#fff}
+  .step.done .bub{background:var(--success);border-color:var(--success);color:#fff}
+  .step.now .bub{border-color:var(--primary);color:var(--primary)}
+  .step b{font-size:13.5px}.step .sd{font-size:12px;color:var(--ink-muted)}
+
+  .poster{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;max-width:340px;margin:0 auto}
+  .poster .ph{background:var(--primary);color:#fff;padding:18px 20px}
+  .poster .ph b{font-size:18px;display:block}
+  .poster .ph span{font-size:12.5px;opacity:.85}
+  .poster .pq{display:grid;place-items:center;padding:22px}
+  .poster .pf{border-top:1px solid var(--line);padding:10px 20px 14px;text-align:center}
+  .poster .pf .cta{font-size:15px;font-weight:600;color:var(--primary-strong)}
+  .poster .pf .loc{font-size:12.5px;color:var(--ink-muted);margin-top:2px}
+  .poster .pow{font-size:10.5px;color:var(--ink-faint);letter-spacing:.05em;text-transform:uppercase;margin-top:8px}
+
+  .ssocards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .ssocard{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fff}
+  .ssocard b{font-size:14px;display:block;margin-bottom:3px}
+  .ssocard .sd{font-size:12px;color:var(--ink-muted);margin-bottom:10px}
+
+  /* ---------- dock ---------- */
+  .dock{background:var(--dock-bg);color:var(--dock-ink);display:flex;flex-direction:column;border-left:1px solid var(--dock-line)}
+  .dock .tabs{display:flex;border-bottom:1px solid var(--dock-line)}
+  .dock .tab{flex:1;padding:12px 8px;text-align:center;font-size:12.5px;font-weight:600;color:var(--dock-muted);cursor:pointer;background:transparent;border:0}
+  .dock .tab.active{color:#fff;box-shadow:inset 0 -2px 0 var(--accent-tint)}
+  .pane{flex:1;overflow:auto;padding:16px;display:none}.pane.active{display:block}
+  .pane h3{margin:.2em 0 .6em;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--accent-tint)}
+  .pane .small{font-size:12.5px;color:var(--dock-muted)}
+  .pane textarea{width:100%;background:#1E0F33;color:var(--dock-ink);border:1px solid var(--dock-line);border-radius:10px;padding:10px;font:13px/1.5 inherit;resize:vertical}
+  .note{background:var(--dock-panel);border:1px solid var(--dock-line);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px}
+  .note .meta{font-size:11px;color:var(--dock-muted);margin-bottom:4px;font-family:ui-monospace,Consolas,monospace}
+  .note .x{float:right;cursor:pointer;color:var(--dock-muted);border:0;background:none;padding:0}
+  .note .x svg.ic{width:14px;height:14px}
+  .btn-dock{background:var(--accent-deep);color:#fff;border:0;border-radius:9px;padding:10px 12px;font-weight:600;font-size:13.5px;cursor:pointer;width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn-dock:hover{background:var(--accent)}
+  .btn-dock.alt{background:var(--dock-panel);border:1px solid var(--dock-line)}
+  .fabs{position:fixed;bottom:16px;z-index:60;display:none}
+  #navFab{left:16px}#dockFab{right:16px}
+  @media (max-width:880px){#navFab{display:block}}
+  @media (max-width:1280px){#dockFab{display:block}}
+
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;font-size:13.5px;opacity:0;pointer-events:none;transition:.22s;z-index:100;max-width:90vw}
+  #toast.on{opacity:1;transform:translateX(-50%)}
+  #tip{position:fixed;background:var(--ink);color:#fff;font-size:12.5px;padding:7px 11px;border-radius:8px;pointer-events:none;opacity:0;transition:opacity .12s;z-index:90;max-width:260px;line-height:1.45}
+  #tip.on{opacity:1}
+  #tip .tt{font-weight:600}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div class="login" id="loginView">
+  <div class="login-card">
+    <div class="mark"><span class="lg-logo" aria-hidden="true">P</span><h1>PatronIQ Admin</h1></div>
+    <p class="lib">Pioneer Library System · We are innovators. We are your library.</p>
+    <div class="lfield"><label for="lemail">Work email</label><input id="lemail" type="email" value="dwhitfield@pioneerlibrarysystem.org" autocomplete="off"></div>
+    <div class="lfield"><label for="lpass">Password</label><input id="lpass" type="password" value="demo-password" autocomplete="off"></div>
+    <div class="lfield"><label id="roleLbl">Sign in as (demo role picker — gates navigation)</label>
+      <div class="roles" role="radiogroup" aria-labelledby="roleLbl" id="roleGrid"></div>
+    </div>
+    <button class="btn full" id="signIn">Sign in</button>
+    <div class="divider">or continue with</div>
+    <div class="sso">
+      <button class="btn ghost full sso-btn" data-idp="Microsoft Entra ID">Sign in with Microsoft</button>
+      <button class="btn ghost full sso-btn" data-idp="Google Workspace">Sign in with Google</button>
+      <button class="btn ghost full sso-btn" data-idp="OIDC / SAML">Sign in with library SSO</button>
+    </div>
+    <p class="login-foot">Interactive mock — no backend, no real authentication. Powered by EnvisionWare.</p>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div class="app" id="app">
+  <nav class="sidenav" id="sidenav" aria-label="Admin navigation">
+    <div class="brand"><span class="lg-logo" aria-hidden="true">P</span><div><b>PatronIQ Admin</b><span>Pioneer Library System</span></div></div>
+    <h4>Manage</h4>
+    <div id="navList"></div>
+    <div class="foot">Powered by <b>EnvisionWare</b><br>Mock console · sample data</div>
+  </nav>
+
+  <section class="main">
+    <div class="topbar">
+      <button class="iconbtn" id="navToggle" aria-label="Toggle navigation" data-ic="menu"></button>
+      <h1 id="viewTitle">Dashboard</h1>
+      <span class="badge b-mock">Mock — no backend</span>
+      <span class="grow"></span>
+      <span class="rolechip" id="roleChip"></span>
+      <button class="btn ghost sm" id="signOut">Sign out</button>
+      <button class="iconbtn" id="dockToggle" aria-label="Toggle notes dock" data-ic="note"></button>
+    </div>
+    <div class="wrap" id="wrap"></div>
+  </section>
+
+  <aside class="dock" id="dock" aria-label="Notes dock">
+    <div class="tabs">
+      <button class="tab active" data-pane="notes">Notes</button>
+      <button class="tab" data-pane="about">About</button>
+    </div>
+    <div class="pane active" id="pane-notes">
+      <h3>Iteration notes</h3>
+      <p class="small">Click around, then jot what you want changed. <b>Copy for Claude</b> and paste into chat — notes plus any event edits come along.</p>
+      <textarea id="noteInput" rows="3" placeholder="e.g. 'KPI tiles should show month-to-date too' or 'Branch managers need the QR view'"></textarea>
+      <button class="btn-dock" id="addNote"><span data-ic="plus"></span>Add note</button>
+      <div id="noteList" style="margin-top:12px"></div>
+      <button class="btn-dock alt" id="copyNotes"><span data-ic="copy"></span>Copy for Claude</button>
+      <button class="btn-dock alt" id="clearNotes" style="margin-top:6px">Clear notes</button>
+    </div>
+    <div class="pane" id="pane-about">
+      <h3>About this mock</h3>
+      <p class="small">Interactive mock of the <b>new PatronIQ admin console</b> (PRODUCT-SPEC R12–R15), themed for Pioneer Library System per DESIGN-SYSTEM.md. Usage figures are the shared sample dataset (<span class="mono">workbench-data/pioneer-data.js</span>) and are marked SAMPLE.</p>
+      <p class="small">Functional here: role-gated nav, the Events editor (persists to <span class="mono">localStorage</span>), module enable stepper, QR generate + signage preview, live AA contrast checks, alert acknowledge, and this notes dock (shared <span class="mono">piq_notes</span> key with the backend console).</p>
+      <p class="small">Sibling: <a href="../backend/index.html" style="color:var(--accent-tint)">backend/index.html</a> — the API console.</p>
+    </div>
+  </aside>
+</div>
+
+<button class="btn fabs" id="navFab">Menu</button>
+<button class="btn fabs" id="dockFab">Notes</button>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="tip" role="presentation"></div>
+
+<dialog id="dlg"></dialog>
+
+<script src="../workbench-data/pioneer-data.js"></script>
+<script>
+'use strict';
+const D = window.PIONEER_DATA || {};
+const T = (D.theme && D.theme.tokens) || {};
+const U = D.usage || {};
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => (n||0).toLocaleString('en-US');
+const sum = a => (a||[]).reduce((x,y)=>x+y,0);
+
+/* ---------- line icons (24px grid, 1.75 stroke, rounded) ---------- */
+const IC = {
+  dashboard:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+  bulb:'<path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z"/>',
+  file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/>',
+  blocks:'<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><path d="M17 14v6"/><path d="M14 17h6"/>',
+  qr:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3z"/><path d="M21 14v1"/><path d="M14 21h1"/><path d="M18 21h3v-3"/>',
+  palette:'<path d="M12 22a10 10 0 1 1 10-10c0 2.2-1.8 3-3.5 3H16a2 2 0 0 0-2 2c0 1 .6 1.5.6 2.5S13.6 22 12 22z"/><circle cx="7.5" cy="11.5" r="1"/><circle cx="10.5" cy="7.5" r="1"/><circle cx="14.5" cy="7.5" r="1"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  note:'<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11l5-5V5a2 2 0 0 0-2-2z"/><path d="M15 21v-4a2 2 0 0 1 2-2h4"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  x:'<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  plus:'<path d="M12 5v14"/><path d="M5 12h14"/>',
+  printer:'<path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+  lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  menu:'<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
+  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  pencil:'<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+  trash:'<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  refresh:'<path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h0a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55h0a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v0a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/>',
+  chevron:'<path d="m6 9 6 6 6-6"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+  task:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="m8.5 13.5 2.5 2.5 4.5-4.5"/>',
+  book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-2.5"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>'
+};
+function ic(name, cls){ return '<svg class="ic '+(cls||'')+'" viewBox="0 0 24 24" aria-hidden="true">'+(IC[name]||'')+'</svg>'; }
+document.querySelectorAll('[data-ic]').forEach(n => { n.innerHTML = ic(n.dataset.ic) + n.innerHTML.replace(/^/,''); });
+
+/* ---------- chart palette (validated: see dataviz notes) ---------- */
+const C_PRIMARY = T.brandPrimary || '#67338E';
+const C_ACCENT  = T.brandAccent  || '#1B96D4';
+const C_DEEP    = T.brandAccentDeep || '#1E6093';
+const RAMP5 = ['#46166B','#67338E','#8751A8','#A26FC1','#BB90D6']; // ordinal, dark->light, validated
+const RAMP4 = ['#46166B','#67338E','#8F5CB4','#B389D2'];           // ordinal, validated
+const GRID = '#EAE6EF';
+
+/* ---------- toast + tooltip ---------- */
+let toastT;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),2200); }
+function tipShow(html,x,y){ const t=$('#tip'); t.innerHTML=html; t.classList.add('on'); const r=t.getBoundingClientRect(); let lx=x+14, ly=y+14; if(lx+r.width>innerWidth-8) lx=x-r.width-10; if(ly+r.height>innerHeight-8) ly=y-r.height-10; t.style.left=lx+'px'; t.style.top=ly+'px'; }
+function tipHide(){ $('#tip').classList.remove('on'); }
+
+/* ---------- roles & auth (R12) ---------- */
+const ROLES = ['EnvisionWare Support','Library Admin','Branch Manager','Staff'];
+const VIEWS = [
+  {id:'dashboard', label:'Dashboard',   icon:'dashboard'},
+  {id:'insights',  label:'AI Insights', icon:'bulb'},
+  {id:'content',   label:'Content',     icon:'file'},
+  {id:'modules',   label:'Modules',     icon:'blocks'},
+  {id:'qrcodes',   label:'QR Codes',    icon:'qr'},
+  {id:'branding',  label:'Branding',    icon:'palette'},
+  {id:'users',     label:'Users & SSO', icon:'users'},
+  {id:'alerts',    label:'Alerts',      icon:'bell'}
+];
+const ACCESS = {
+  'EnvisionWare Support': new Set(VIEWS.map(v=>v.id)),
+  'Library Admin':        new Set(VIEWS.map(v=>v.id)),
+  'Branch Manager':       new Set(['dashboard','insights','content','qrcodes','alerts']),
+  'Staff':                new Set(['dashboard','alerts'])
+};
+let role = sessionStorage.getItem('piq_admin_role') || null;
+let selRole = role || 'Library Admin';
+let view = 'dashboard';
+let contentTab = 'events';
+
+function renderRoleGrid(){
+  $('#roleGrid').innerHTML = ROLES.map(r =>
+    '<button type="button" class="rolebtn'+(r===selRole?' sel':'')+'" role="radio" aria-checked="'+(r===selRole)+'" data-role="'+esc(r)+'">'+ic('shield')+esc(r)+'</button>').join('');
+  document.querySelectorAll('.rolebtn').forEach(b => b.onclick = () => { selRole=b.dataset.role; renderRoleGrid(); });
+}
+function enterApp(){
+  role = selRole; sessionStorage.setItem('piq_admin_role', role);
+  $('#loginView').style.display='none'; $('#app').classList.add('on');
+  $('#roleChip').innerHTML = ic('shield')+esc(role);
+  if(!ACCESS[role].has(view)) view='dashboard';
+  render();
+}
+$('#signIn').onclick = enterApp;
+document.querySelectorAll('.sso-btn').forEach(b => b.onclick = () => { toast(b.dataset.idp+' SSO is stubbed in this mock — signing you in as '+selRole); setTimeout(enterApp, 500); });
+$('#signOut').onclick = () => { sessionStorage.removeItem('piq_admin_role'); location.reload(); };
+
+/* ---------- nav ---------- */
+function renderNav(){
+  $('#navList').innerHTML = VIEWS.map(v => {
+    const allowed = ACCESS[role].has(v.id);
+    if(!allowed) return '<div class="navitem locked" title="Not available to '+esc(role)+' (R12 role gating)">'+ic(v.icon)+esc(v.label)+'<span class="lockic">'+ic('lock')+'</span></div>';
+    return '<button class="navitem'+(view===v.id?' active':'')+'" data-v="'+v.id+'">'+ic(v.icon)+esc(v.label)+'</button>';
+  }).join('');
+  document.querySelectorAll('.navitem[data-v]').forEach(b => b.onclick = () => { view=b.dataset.v; $('#sidenav').classList.remove('open'); render(); });
+}
+
+/* ---------- events store (R13) ---------- */
+const EV_KEY='piq_admin_events';
+function loadEvents(){ try{ const s=JSON.parse(localStorage.getItem(EV_KEY)||'null'); if(Array.isArray(s)&&s.length) return s; }catch(e){} return JSON.parse(JSON.stringify(D.events||[])); }
+function saveEvents(evts){ localStorage.setItem(EV_KEY, JSON.stringify(evts)); }
+let EVENTS = loadEvents();
+function eventsDirty(){ return JSON.stringify(EVENTS)!==JSON.stringify(D.events||[]); }
+
+/* ---------- mock stores ---------- */
+let MODULES = (D.modules&&D.modules.enabled||[]).map(m=>Object.assign({},m));
+const CATALOG = (D.modules&&D.modules.catalog)||[];
+let QRS = (D.qrPlacements||[]).map(q=>Object.assign({},q));
+let ALERTS = [
+  {id:'al-01', reason:'safety',        urgency:'urgent', branch:'Norman West', quote:'Someone near the entrance needs medical help.', ago:'2 min ago',  status:'active'},
+  {id:'al-02', reason:'account',       urgency:'normal', branch:'Moore',       quote:'My card is blocked and I cannot pick up my holds.', ago:'11 min ago', status:'active'},
+  {id:'al-03', reason:'technology',    urgency:'normal', branch:'Shawnee',     quote:'The print release station is not responding.', ago:'26 min ago', status:'active'},
+  {id:'al-04', reason:'language',      urgency:'normal', branch:'Southwest OKC', quote:'Necesito ayuda en espanol, por favor.', ago:'1 h ago', status:'acknowledged'},
+  {id:'al-05', reason:'accessibility', urgency:'normal', branch:'Norman East', quote:'I need the screen reader turned on at this kiosk.', ago:'2 h ago', status:'acknowledged'}
+];
+const STAFF = [
+  {name:'Dana Whitfield',  email:'dwhitfield@pioneerlibrarysystem.org', role:'Library Admin',       branch:'System',      idp:'Entra ID', last:'today'},
+  {name:'Marcus Lee',      email:'mlee@pioneerlibrarysystem.org',       role:'Branch Manager',      branch:'Norman West', idp:'Entra ID', last:'today'},
+  {name:'Priya Natarajan', email:'pnatarajan@pioneerlibrarysystem.org', role:'Branch Manager',      branch:'Moore',       idp:'Local',    last:'yesterday'},
+  {name:'Jo Beckett',      email:'jbeckett@pioneerlibrarysystem.org',   role:'Staff',               branch:'Shawnee',     idp:'Local',    last:'3 days ago'},
+  {name:'EW Field Support',email:'support@envisionware.com',            role:'EnvisionWare Support',branch:'EnvisionWare',idp:'Entra ID', last:'on demand'}
+];
+const KB = [
+  {slug:'library-cards', title:'Getting a library card', body:(D.library&&D.library.cardPolicy)||''},
+  {slug:'fine-free',     title:'Fine-free policy',       body:'Pioneer is fine-free — fees apply only to lost or damaged items. '+((D.patrons&&D.patrons[0]&&D.patrons[0].feesNote)||'')},
+  {slug:'printing',      title:'Printing & copying',     body:'B&W $0.10/page, color $0.50/page. Send from your phone or a library PC.'},
+  {slug:'hours',         title:'Hours & locations',      body:(D.branches||[]).length+' locations across Cleveland, McClain and Pottawatomie counties. Hours vary by branch tier.'}
+];
+
+/* ---------- WCAG contrast (live-computed for branding view) ---------- */
+function relLum(hex){ const c=hex.replace('#',''); const f=i=>{let v=parseInt(c.substr(i,2),16)/255; return v<=0.04045? v/12.92 : Math.pow((v+0.055)/1.055,2.4);}; return 0.2126*f(0)+0.7152*f(2)+0.0722*f(4); }
+function ratio(a,b){ const x=relLum(a), y=relLum(b); const hi=Math.max(x,y), lo=Math.min(x,y); return (hi+0.05)/(lo+0.05); }
+
+/* ================= VIEW RENDERERS ================= */
+function render(){
+  renderNav();
+  $('#viewTitle').textContent = VIEWS.find(v=>v.id===view).label;
+  const w=$('#wrap'); w.innerHTML='';
+  ({dashboard:vDashboard, insights:vInsights, content:vContent, modules:vModules,
+    qrcodes:vQr, branding:vBranding, users:vUsers, alerts:vAlerts})[view](w);
+}
+
+/* ---------- 2. DASHBOARD (R14) ---------- */
+function spark(data,color){
+  const w=64,h=26,mx=Math.max.apply(null,data),mn=Math.min.apply(null,data);
+  const pts=data.map((v,i)=>((i*(w-4)/(data.length-1))+2).toFixed(1)+','+(h-3-(v-mn)/(mx-mn||1)*(h-8)).toFixed(1)).join(' ');
+  return '<svg class="spark" width="'+w+'" height="'+h+'" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+function vDashboard(w){
+  const scans=U.qrScans||[], loads=U.appLoads||[], turns=U.aiTurns||[], pay=U.payments||{count:0,volume:0,byMethod:{}};
+  w.insertAdjacentHTML('beforeend',
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span class="badge b-sample">Sample data</span><span style="font-size:12.5px;color:var(--ink-muted)">Metering figures come from the shared demo dataset — a live deployment reads the UsageEvent rollup (R14).</span></div>'+
+    '<div class="kpis">'+
+      kpi('QR scans · 7 days', fmt(sum(scans)), 'billable entry events', spark(scans,C_PRIMARY))+
+      kpi('App loads · 7 days', fmt(sum(loads)), 'PWA + kiosk sessions', spark(loads,C_PRIMARY))+
+      kpi('AI turns · 7 days', fmt(sum(turns)), 'concierge conversations', spark(turns,C_PRIMARY))+
+      kpi('Payment volume', '$'+(pay.volume||0).toFixed(2), fmt(pay.count)+' payments · Adyen rail', '')+
+    '</div>');
+
+  // line chart
+  const c1=document.createElement('div'); c1.className='card';
+  c1.innerHTML='<h2>Scans & app loads by day</h2><p class="desc">Entry activity across all '+(D.branches||[]).length+' locations.</p>'+
+    '<div class="chartlegend"><span class="key"><i class="line" style="background:'+C_PRIMARY+'"></i>QR scans</span><span class="key"><i class="line" style="background:'+C_ACCENT+'"></i>App loads</span></div>'+
+    lineChartSvg();
+  w.append(c1); wireLineHover(c1);
+
+  const row=document.createElement('div'); row.className='cardrow';
+  // donut
+  const c2=document.createElement('div'); c2.className='card';
+  c2.innerHTML='<h2>Route mix</h2><p class="desc">Share of AI turns by route (7 days).</p>'+donutSvg();
+  row.append(c2);
+  // payments split
+  const c3=document.createElement('div'); c3.className='card';
+  c3.innerHTML='<h2>Payment methods</h2><p class="desc">'+fmt(pay.count)+' payments · $'+(pay.volume||0).toFixed(2)+' volume (7 days).</p>'+paySplitSvg();
+  row.append(c3);
+  w.append(row); wireDonutHover(c2); wireBarHover(c3);
+
+  // payments traced to what the money was for (financial rail) — R14
+  const rowP=document.createElement('div'); rowP.className='card';
+  rowP.innerHTML='<h2>Payments by purpose</h2><p class="desc">What the '+fmt(pay.count)+' payments ($'+(pay.volume||0).toFixed(2)+') on the EnvisionWare financial rail were collected for (7 days).</p>'+payPurposeSvg();
+  w.append(rowP); wireBarHover(rowP);
+
+  const row2=document.createElement('div'); row2.className='cardrow';
+  const c4=document.createElement('div'); c4.className='card';
+  c4.innerHTML='<h2>Feature utilization</h2><p class="desc">Share of feature interactions.</p>'+hbarsSvg(U.features||{},C_PRIMARY,'%');
+  const c5=document.createElement('div'); c5.className='card';
+  c5.innerHTML='<h2>Escalation reasons</h2><p class="desc">Why patrons asked for a human.</p>'+hbarsSvg(U.escalationReasons||{},C_DEEP,'%');
+  row2.append(c4,c5); w.append(row2); wireBarHover(c4); wireBarHover(c5);
+}
+function kpi(l,v,m,sp){ return '<div class="kpi"><div class="l">'+l+'</div><div class="v">'+v+'</div><div class="m">'+m+'</div>'+(sp||'')+'</div>'; }
+
+function lineChartSvg(){
+  const days=U.days||[], A=U.qrScans||[], B=U.appLoads||[];
+  const W=660,H=230,pl=46,pr=16,pt=14,pb=30, pw=W-pl-pr, ph=H-pt-pb;
+  const mx=Math.max.apply(null,A.concat(B)); const step=mx>400?200:100; const ymax=Math.ceil(mx/step)*step;
+  const X=i=>pl+i*pw/(days.length-1), Y=v=>pt+ph-(v/ymax)*ph;
+  let s='<svg id="lineSvg" viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Line chart of QR scans and app loads by day" style="max-width:'+W+'px">';
+  for(let t=0;t<=ymax;t+=step){ s+='<line x1="'+pl+'" y1="'+Y(t)+'" x2="'+(W-pr)+'" y2="'+Y(t)+'" stroke="'+GRID+'" stroke-width="1"/>'+
+    '<text x="'+(pl-8)+'" y="'+(Y(t)+4)+'" text-anchor="end" font-size="11" fill="#7A7D8A">'+fmt(t)+'</text>'; }
+  days.forEach((d,i)=> s+='<text x="'+X(i)+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="#7A7D8A">'+d+'</text>');
+  [[A,C_PRIMARY],[B,C_ACCENT]].forEach(([arr,col])=>{
+    s+='<polyline points="'+arr.map((v,i)=>X(i)+','+Y(v)).join(' ')+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+    arr.forEach((v,i)=> s+='<circle cx="'+X(i)+'" cy="'+Y(v)+'" r="4" fill="'+col+'" stroke="#fff" stroke-width="2"/>');
+  });
+  s+='<line id="xh" x1="0" y1="'+pt+'" x2="0" y2="'+(pt+ph)+'" stroke="#B4A6C6" stroke-width="1" visibility="hidden"/>';
+  s+='<rect id="lineHit" x="'+pl+'" y="'+pt+'" width="'+pw+'" height="'+ph+'" fill="transparent"/></svg>';
+  return s;
+}
+function wireLineHover(card){
+  const svg=card.querySelector('#lineSvg'), hit=card.querySelector('#lineHit'), xh=card.querySelector('#xh');
+  const days=U.days||[], A=U.qrScans||[], B=U.appLoads||[];
+  const pl=46,pr=16,W=660,pw=W-pl-pr;
+  hit.addEventListener('mousemove',e=>{
+    const r=svg.getBoundingClientRect(); const sx=(e.clientX-r.left)*(W/r.width);
+    const i=Math.max(0,Math.min(days.length-1,Math.round((sx-pl)/(pw/(days.length-1)))));
+    const x=pl+i*pw/(days.length-1);
+    xh.setAttribute('x1',x); xh.setAttribute('x2',x); xh.setAttribute('visibility','visible');
+    tipShow('<span class="tt">'+days[i]+'</span><br>QR scans: '+fmt(A[i])+'<br>App loads: '+fmt(B[i]), e.clientX, e.clientY);
+  });
+  hit.addEventListener('mouseleave',()=>{ xh.setAttribute('visibility','hidden'); tipHide(); });
+}
+function donutSvg(){
+  const mix=U.routeMix||{}; const entries=Object.entries(mix).sort((a,b)=>b[1]-a[1]);
+  const total=entries.reduce((n,e)=>n+e[1],0);
+  const cx=105,cy=105,r2=92,r1=58; let a=-Math.PI/2; const gap=2.5/r2;
+  let seg='';
+  entries.forEach(([k,v],i)=>{
+    const sweep=v/total*Math.PI*2, a0=a+gap/2, a1=a+sweep-gap/2; a+=sweep;
+    const p=(r,ang)=>[(cx+r*Math.cos(ang)).toFixed(2),(cy+r*Math.sin(ang)).toFixed(2)];
+    const big=(a1-a0)>Math.PI?1:0;
+    const [x0,y0]=p(r2,a0),[x1,y1]=p(r2,a1),[x2,y2]=p(r1,a1),[x3,y3]=p(r1,a0);
+    seg+='<path d="M'+x0+' '+y0+' A'+r2+' '+r2+' 0 '+big+' 1 '+x1+' '+y1+' L'+x2+' '+y2+' A'+r1+' '+r1+' 0 '+big+' 0 '+x3+' '+y3+' Z" fill="'+RAMP5[i]+'" data-tip="<span class=&quot;tt&quot;>'+k+'</span><br>'+v+'% of turns" style="cursor:default"/>';
+  });
+  const legend=entries.map(([k,v],i)=>'<span class="key"><i style="background:'+RAMP5[i]+'"></i>'+k+' <b style="color:var(--ink)">'+v+'%</b></span>').join('');
+  return '<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><svg viewBox="0 0 210 210" width="180" role="img" aria-label="Donut chart of route mix">'+seg+
+    '<text x="'+cx+'" y="'+(cy-4)+'" text-anchor="middle" font-size="21" font-weight="600" fill="#23242A">'+fmt(sum(U.aiTurns))+'</text>'+
+    '<text x="'+cx+'" y="'+(cy+15)+'" text-anchor="middle" font-size="11" fill="#7A7D8A">AI turns / 7d</text></svg>'+
+    '<div class="chartlegend" style="flex-direction:column;gap:7px;align-items:flex-start">'+legend+'</div></div>';
+}
+function paySplitSvg(){
+  const by=(U.payments&&U.payments.byMethod)||{}; const entries=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  const total=entries.reduce((n,e)=>n+e[1],0);
+  const W=560,H=30; let x=0, seg='';
+  const NAMES={card:'Card',googlepay:'Google Pay',applepay:'Apple Pay',cashapp:'Cash App Pay'};
+  entries.forEach(([k,v],i)=>{
+    const wpx=v/total*W;
+    const lum=i<2; // dark segments -> white label
+    seg+='<g data-tip="<span class=&quot;tt&quot;>'+(NAMES[k]||k)+'</span><br>'+v+' payments · '+Math.round(v/total*100)+'%">'+
+      '<rect x="'+(x+1).toFixed(1)+'" y="0" width="'+(wpx-2).toFixed(1)+'" height="'+H+'" rx="4" fill="'+RAMP4[i]+'"/>'+
+      (wpx>78?'<text x="'+(x+wpx/2).toFixed(1)+'" y="'+(H/2+4)+'" text-anchor="middle" font-size="11.5" font-weight="600" fill="'+(lum?'#fff':'#23242A')+'">'+Math.round(v/total*100)+'%</text>':'')+
+      '</g>';
+    x+=wpx;
+  });
+  const legend=entries.map(([k,v],i)=>'<span class="key"><i style="background:'+RAMP4[i]+'"></i>'+(NAMES[k]||k)+' <b style="color:var(--ink)">'+v+'</b></span>').join('');
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Payment method split" style="max-width:'+W+'px">'+seg+'</svg><div class="chartlegend" style="margin-top:10px">'+legend+'</div>';
+}
+function payPurposeSvg(){
+  const by=(U.payments&&U.payments.byPurpose)||{};
+  const entries=Object.entries(by).sort((a,b)=>b[1].amount-a[1].amount);
+  if(!entries.length) return '<p class="desc">No payment data.</p>';
+  const mx=Math.max.apply(null,entries.map(e=>e[1].amount));
+  const total=entries.reduce((s,e)=>s+e[1].amount,0)||1;
+  const W=560, lw=160, bw=W-lw-84, bh=20, gp=15;
+  const H=entries.length*(bh+gp)+4;
+  let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Payments by purpose" style="max-width:'+W+'px">';
+  entries.forEach(([k,v],i)=>{
+    const y=i*(bh+gp)+2, w2=Math.max(6,v.amount/mx*bw), pct=Math.round(v.amount/total*100);
+    s+='<text x="'+(lw-8)+'" y="'+(y+bh-6)+'" text-anchor="end" font-size="12" fill="#515462">'+k+'</text>'+
+       '<g data-tip="<span class=&quot;tt&quot;>'+k+'</span><br>$'+v.amount.toFixed(2)+' · '+v.count+' payments · '+pct+'%">'+
+       '<path d="M'+lw+' '+y+' h'+(w2-4)+' a4 4 0 0 1 4 4 v'+(bh-8)+' a4 4 0 0 1 -4 4 h-'+(w2-4)+' Z" fill="'+C_PRIMARY+'"/></g>'+
+       '<text x="'+(lw+w2+7)+'" y="'+(y+bh-6)+'" font-size="12" font-weight="600" fill="#23242A">$'+v.amount.toFixed(2)+'</text>';
+  });
+  return s+'</svg>';
+}
+function hbarsSvg(obj,color,unit){
+  const entries=Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+  const mx=Math.max.apply(null,entries.map(e=>e[1]));
+  const W=520, lw=104, bw=W-lw-46, bh=18, gp=13;
+  const H=entries.length*(bh+gp)+4;
+  let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Bar chart" style="max-width:'+W+'px">';
+  entries.forEach(([k,v],i)=>{
+    const y=i*(bh+gp)+2, w2=Math.max(6,v/mx*bw);
+    s+='<text x="'+(lw-8)+'" y="'+(y+bh-5)+'" text-anchor="end" font-size="12" fill="#515462">'+k+'</text>'+
+       '<g data-tip="<span class=&quot;tt&quot;>'+k+'</span><br>'+v+unit+'">'+
+       '<path d="M'+lw+' '+y+' h'+(w2-4)+' a4 4 0 0 1 4 4 v'+(bh-8)+' a4 4 0 0 1 -4 4 h-'+(w2-4)+' Z" fill="'+color+'"/></g>'+
+       '<text x="'+(lw+w2+7)+'" y="'+(y+bh-5)+'" font-size="12" font-weight="600" fill="#23242A">'+v+unit+'</text>';
+  });
+  return s+'</svg>';
+}
+function wireDonutHover(card){ wireBarHover(card); }
+function wireBarHover(card){
+  card.querySelectorAll('[data-tip]').forEach(n=>{
+    n.addEventListener('mousemove',e=>tipShow(n.dataset.tip,e.clientX,e.clientY));
+    n.addEventListener('mouseleave',tipHide);
+  });
+}
+
+/* ---------- 3. AI INSIGHTS ---------- */
+const AGG = [
+  [['Failed print intents (Sat–Sun)','34'],['Failed print intents (Mon–Fri)','11'],['Branch with most failures','Moore (61%)'],['Top failing tool call','print.submit_job']],
+  [['Peak booking window','Tue/Thu 3–6 PM'],['Study Room 2 utilization','92%'],['Library Lab rooms utilization','38%'],['Declined-slot clarifies','27']],
+  [['locale=es share, last month','4.1%'],['locale=es share, this month','8.3%'],['es turns routed to escalate','19%'],['es UI pack status','not enabled']],
+  [['Wayfinding spikes before storytime','15 min prior'],['Avg extra wayfind turns/event','9'],['Events affected/wk','12'],['Suggested fix','event-day home banner']]
+];
+function vInsights(w){
+  w.insertAdjacentHTML('beforeend','<div class="card" style="display:flex;gap:10px;align-items:center">'+ic('shield')+'<span style="font-size:13px;color:var(--ink-muted)"><b style="color:var(--ink)">Aggregates only — no patron PII.</b> Insight prompts see rollup counts from the metering pipeline, never conversation text tied to a patron (blueprint guardrail T18).</span><span class="badge b-sample" style="margin-left:auto">Sample data</span></div>');
+  (U.insights||[]).forEach((txt,i)=>{
+    const d=document.createElement('div'); d.className='insight';
+    d.innerHTML='<p>'+esc(txt)+'</p>'+
+      '<div class="agg" id="agg'+i+'"><table>'+AGG[i].map(r=>'<tr><td>'+esc(r[0])+'</td><td style="text-align:right;font-weight:600">'+esc(r[1])+'</td></tr>').join('')+'</table></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+      '<button class="btn ghost sm" data-agg="'+i+'">'+ic('eye')+'View aggregate</button>'+
+      '<button class="btn ghost sm" data-kb="'+i+'">'+ic('book')+'Add to Knowledge base</button>'+
+      '<button class="btn ghost sm" data-task="'+i+'">'+ic('task')+'Create task</button></div>';
+    w.append(d);
+  });
+  w.querySelectorAll('[data-agg]').forEach(b=>b.onclick=()=>{ const a=$('#agg'+b.dataset.agg); a.classList.toggle('open'); b.innerHTML=(a.classList.contains('open')?ic('eye')+'Hide aggregate':ic('eye')+'View aggregate'); });
+  w.querySelectorAll('[data-kb]').forEach(b=>b.onclick=()=>kbDialog((U.insights||[])[+b.dataset.kb]||''));
+  w.querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>toast('Task created for the branch team (mock)'));
+}
+
+// Add-to-Knowledge-base flow (R10/R16): the end user must supply the ANSWER before anything
+// is added. Captures a title + answer, stores to localStorage piq_admin_kb, and (best-effort)
+// the shared notes sink so the team sees what was drafted.
+function kbDialog(insight){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(35,36,42,.55);display:grid;place-items:center;z-index:200;padding:20px';
+  ov.innerHTML=
+    '<div role="dialog" aria-modal="true" aria-label="Add to Knowledge base" style="background:#fff;border-radius:16px;max-width:560px;width:100%;padding:24px;box-shadow:0 24px 60px rgba(0,0,0,.25)">'+
+    '<h2 style="margin:0 0 4px;font-size:20px">Add to Knowledge base</h2>'+
+    '<p style="margin:0 0 16px;color:var(--ink-muted);font-size:13px">Write the answer patrons should get. Nothing is added until you provide it — the AI concierge will ground its reply on this text.</p>'+
+    '<label style="font-size:12px;font-weight:700;color:var(--ink-muted)">Question / topic</label>'+
+    '<input id="kbTitle" type="text" style="width:100%;margin:6px 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px" />'+
+    '<label style="font-size:12px;font-weight:700;color:var(--ink-muted)">Answer / article content <span style="color:var(--danger)">*</span></label>'+
+    '<textarea id="kbBody" rows="6" placeholder="e.g. Printing is $0.10/page black &amp; white, $0.50 color. Send jobs from your phone…" style="width:100%;margin:6px 0 8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;resize:vertical"></textarea>'+
+    '<div id="kbErr" style="color:var(--danger);font-size:13px;min-height:18px"></div>'+
+    '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">'+
+    '<button class="btn ghost" id="kbCancel">Cancel</button>'+
+    '<button class="btn" id="kbSave">Add to Knowledge base</button></div></div>';
+  document.body.appendChild(ov);
+  // Seed a suggested title from the insight (before the em-dash), leave the answer blank.
+  const seed=(insight||'').split(/[—:]/)[0].trim();
+  const ti=ov.querySelector('#kbTitle'); ti.value=seed; const ta=ov.querySelector('#kbBody');
+  const close=()=>ov.remove();
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  ov.querySelector('#kbCancel').onclick=close;
+  ta.focus();
+  ov.querySelector('#kbSave').onclick=()=>{
+    const title=ti.value.trim(), body=ta.value.trim();
+    if(!body){ ov.querySelector('#kbErr').textContent='Please enter the answer before adding.'; ta.focus(); return; }
+    const kb=JSON.parse(localStorage.getItem('piq_admin_kb')||'[]');
+    kb.push({title:title||'(untitled)',body,source:'ai-insight',at:new Date().toISOString()});
+    localStorage.setItem('piq_admin_kb',JSON.stringify(kb));
+    if(window.PIQNotes&&PIQNotes.push) PIQNotes.push('KB draft: "'+(title||'untitled')+'" → '+body,'admin · knowledge-base');
+    close(); toast('Added to Knowledge base — published to the concierge.');
+  };
+}
+
+/* ---------- 4. CONTENT (R13) ---------- */
+function vContent(w){
+  const tabs=[['events','Events'],['rooms','Rooms'],['services','Services'],['kb','Knowledge Base'],['wayfinding','Wayfinding']];
+  w.insertAdjacentHTML('beforeend','<div class="tabs2">'+tabs.map(t=>'<button class="tab2'+(contentTab===t[0]?' active':'')+'" data-t="'+t[0]+'">'+t[1]+'</button>').join('')+'</div><div id="tabBody"></div>');
+  w.querySelectorAll('.tab2').forEach(b=>b.onclick=()=>{ contentTab=b.dataset.t; render(); });
+  const b=$('#tabBody');
+  if(contentTab==='events') return tabEvents(b);
+  if(contentTab==='rooms') return tabRooms(b);
+  if(contentTab==='services') return tabServices(b);
+  if(contentTab==='kb') return tabKb(b);
+  return tabWayfinding(b);
+}
+function tabEvents(b){
+  const c=document.createElement('div'); c.className='card';
+  c.innerHTML='<h2>Events '+(eventsDirty()?'<span class="badge b-warn">edited</span>':'')+'</h2>'+
+    '<p class="desc">Working editor — changes persist to <span class="mono">localStorage piq_admin_events</span>. The patron app picks these edits up when both run from the same origin (edit → publish → patron surface, R13).</p>'+
+    '<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" id="evAdd">'+ic('plus')+'Add event</button><button class="btn ghost sm" id="evReset">'+ic('refresh')+'Reset to sample data</button></div>'+
+    '<div style="overflow-x:auto"><table><thead><tr><th>Title</th><th>Series</th><th>Time</th><th>Branch</th><th>Room</th><th>Registration</th><th></th></tr></thead><tbody>'+
+    EVENTS.map((e,i)=>'<tr><td><b>'+esc(e.title)+'</b><div class="mono">'+esc(e.audience||'')+'</div></td><td>'+esc(e.series||'')+'</td><td>'+esc(e.time||'')+'</td><td>'+esc(e.branch||'')+'</td><td>'+esc(e.room||'')+'</td>'+
+      '<td>'+(e.registration==='required'?('required'+(e.capacity?' <span class="mono">'+(e.seatsLeft!=null?e.seatsLeft+'/':'')+e.capacity+' seats</span>':'')):'drop-in')+'</td>'+
+      '<td style="white-space:nowrap"><button class="iconbtn" data-edit="'+i+'" aria-label="Edit '+esc(e.title)+'">'+ic('pencil')+'</button> <button class="iconbtn" data-del="'+i+'" aria-label="Delete '+esc(e.title)+'">'+ic('trash')+'</button></td></tr>').join('')+
+    '</tbody></table></div>';
+  b.append(c);
+  c.querySelector('#evAdd').onclick=()=>eventDialog(null);
+  c.querySelector('#evReset').onclick=()=>{ if(confirm('Reset events to the sample dataset?')){ EVENTS=JSON.parse(JSON.stringify(D.events||[])); saveEvents(EVENTS); render(); toast('Events reset to sample data'); } };
+  c.querySelectorAll('[data-edit]').forEach(x=>x.onclick=()=>eventDialog(+x.dataset.edit));
+  c.querySelectorAll('[data-del]').forEach(x=>x.onclick=()=>{ const e=EVENTS[+x.dataset.del]; if(confirm('Delete "'+e.title+'"?')){ EVENTS.splice(+x.dataset.del,1); saveEvents(EVENTS); render(); toast('Event deleted'); } });
+}
+function eventDialog(idx){
+  const e = idx==null ? {title:'',series:'',time:'',branch:(D.branches[0]||{}).name||'',room:'',registration:'drop-in',capacity:'',seatsLeft:'',audience:''} : Object.assign({},EVENTS[idx]);
+  openDlg((idx==null?'Add event':'Edit event'),
+    '<div class="fgrid">'+
+    f('Title','ev-title',e.title,'text','full')+
+    f('Series','ev-series',e.series)+f('Time','ev-time',e.time)+
+    '<div class="f"><label for="ev-branch">Branch</label><select id="ev-branch">'+(D.branches||[]).map(b=>'<option'+(b.name===e.branch?' selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></div>'+
+    f('Room','ev-room',e.room)+
+    '<div class="f"><label for="ev-reg">Registration</label><select id="ev-reg"><option'+(e.registration==='drop-in'?' selected':'')+'>drop-in</option><option'+(e.registration==='required'?' selected':'')+'>required</option></select></div>'+
+    f('Audience','ev-aud',e.audience)+
+    f('Capacity','ev-cap',e.capacity,'number')+f('Seats left','ev-seats',e.seatsLeft,'number')+
+    '</div>',
+    '<button class="btn" id="evSave">'+ic('check')+'Save & publish</button>');
+  $('#evSave').onclick=()=>{
+    const v=id=>$('#'+id).value.trim();
+    const out={id:e.id||('evt-'+Date.now().toString(36)),title:v('ev-title'),series:v('ev-series'),time:v('ev-time'),branch:$('#ev-branch').value,room:v('ev-room'),registration:$('#ev-reg').value,audience:v('ev-aud')};
+    if($('#ev-reg').value==='required'){ if(v('ev-cap'))out.capacity=+v('ev-cap'); if(v('ev-seats'))out.seatsLeft=+v('ev-seats'); }
+    if(!out.title){ toast('Title is required'); return; }
+    if(idx==null) EVENTS.push(out); else EVENTS[idx]=out;
+    saveEvents(EVENTS); closeDlg(); render(); toast('Saved — published to the patron surface (same-origin)');
+  };
+}
+function tabRooms(b){
+  b.insertAdjacentHTML('beforeend','<div class="card"><h2>Rooms</h2><p class="desc">Bookable via Reservation Service (P02). Editing is mocked in this build.</p>'+
+    '<div style="overflow-x:auto"><table><thead><tr><th>Room</th><th>Branch</th><th>Capacity</th><th>Equipment</th><th>Open slots</th><th></th></tr></thead><tbody>'+
+    (D.rooms||[]).map(r=>'<tr><td><b>'+esc(r.name)+'</b></td><td>'+esc(r.branch)+'</td><td>'+r.capacity+'</td><td>'+(r.equipment||[]).join(', ')+'</td><td>'+(r.slots||[]).length+' open · '+(r.booked||[]).length+' booked</td>'+
+    '<td><button class="iconbtn" data-mockedit="'+esc(r.name)+'" aria-label="Edit '+esc(r.name)+'">'+ic('pencil')+'</button></td></tr>').join('')+'</tbody></table></div></div>');
+  wireMockEdit(b);
+}
+function tabServices(b){
+  b.insertAdjacentHTML('beforeend','<div class="card"><h2>Services</h2><p class="desc">Patron-facing service cards with their fulfilling EnvisionWare product ("level beneath", R9).</p>'+
+    '<div style="overflow-x:auto"><table><thead><tr><th>Service</th><th>Description</th><th>Product</th><th></th></tr></thead><tbody>'+
+    (D.services||[]).map(s=>'<tr><td><b>'+esc(s.name)+'</b></td><td>'+esc(s.desc)+'</td><td>'+(s.product?'<span class="badge b-mock">'+esc(s.product)+'</span>':'<span class="mono">—</span>')+'</td>'+
+    '<td><button class="iconbtn" data-mockedit="'+esc(s.name)+'" aria-label="Edit '+esc(s.name)+'">'+ic('pencil')+'</button></td></tr>').join('')+'</tbody></table></div></div>');
+  wireMockEdit(b);
+}
+function tabKb(b){
+  b.insertAdjacentHTML('beforeend','<div class="card"><h2>Knowledge base</h2><p class="desc">Per-library docs that ground the AI concierge (R10). Markdown, published per doc.</p>'+
+    '<div style="overflow-x:auto"><table><thead><tr><th>Slug</th><th>Title</th><th>Body</th><th></th></tr></thead><tbody>'+
+    KB.map(d=>'<tr><td class="mono">'+esc(d.slug)+'</td><td><b>'+esc(d.title)+'</b></td><td style="max-width:380px">'+esc(d.body.slice(0,140))+(d.body.length>140?'…':'')+'</td>'+
+    '<td><button class="iconbtn" data-mockedit="'+esc(d.title)+'" aria-label="Edit '+esc(d.title)+'">'+ic('pencil')+'</button></td></tr>').join('')+'</tbody></table></div>'+
+    '<div style="margin-top:12px"><button class="btn ghost sm" id="kbAdd">'+ic('plus')+'New doc</button></div></div>');
+  $('#kbAdd').onclick=()=>toast('New KB doc editor is mocked in this build');
+  wireMockEdit(b);
+}
+function tabWayfinding(b){
+  b.insertAdjacentHTML('beforeend','<div class="card"><h2>Wayfinding</h2><p class="desc">Destinations the concierge can route to; directions are branch-templated.</p>'+
+    '<div style="overflow-x:auto"><table><thead><tr><th>ID</th><th>Label</th><th>Directions</th><th></th></tr></thead><tbody>'+
+    (D.wayfinding||[]).map(x=>'<tr><td class="mono">'+esc(x.id)+'</td><td><b>'+esc(x.label)+'</b></td><td style="max-width:380px">'+esc(x.directions)+'</td>'+
+    '<td><button class="iconbtn" data-mockedit="'+esc(x.label)+'" aria-label="Edit '+esc(x.label)+'">'+ic('pencil')+'</button></td></tr>').join('')+'</tbody></table></div></div>');
+  wireMockEdit(b);
+}
+function wireMockEdit(b){
+  b.querySelectorAll('[data-mockedit]').forEach(x=>x.onclick=()=>{
+    openDlg('Edit — '+x.dataset.mockedit,'<p style="font-size:13.5px;color:var(--ink-muted);margin:0 0 12px">Full CRUD ships in the admin build (content/* endpoints). In this mock, saving shows the flow only.</p><div class="f"><label>Sample field</label><input type="text" value="'+esc(x.dataset.mockedit)+'"></div>',
+      '<button class="btn" id="mockSave">'+ic('check')+'Save</button>');
+    $('#mockSave').onclick=()=>{ closeDlg(); toast('Saved (mock) — would publish via POST /api/v1/admin/content'); };
+  });
+}
+
+/* ---------- 5. MODULES (R15) ---------- */
+function vModules(w){
+  const c=document.createElement('div'); c.className='card';
+  c.innerHTML='<h2>Enabled modules</h2><p class="desc">Every EnvisionWare product plugs in behind the IIntegrationModule contract (R8). Enabling a product creates a ModuleInstance row — config only, no code changes.</p>'+
+    '<div class="modgrid" id="modGrid"></div>'+
+    '<div style="margin-top:14px"><button class="btn" id="addProduct">'+ic('plus')+'Add product</button></div>';
+  w.append(c);
+  drawModules();
+  $('#addProduct').onclick=catalogDialog;
+}
+function drawModules(){
+  $('#modGrid').innerHTML=MODULES.map((m,i)=>
+    '<div class="modcard"><h3><span class="dot d-'+(m.health==='green'?'green':'amber')+'" title="health: '+m.health+'"></span>'+esc(m.name)+'<span class="pid">'+esc(m.pid)+'</span></h3>'+
+    '<div class="lastcall">'+esc(m.calls&&m.calls[0]||'')+' <span style="color:var(--success)">200</span> · '+(31+((i*37)%80))+'ms</div>'+
+    '<div class="acts"><button class="btn ghost sm" data-cfg="'+i+'">'+ic('gear')+'Configure</button><button class="btn ghost sm" data-test="'+i+'">'+ic('refresh')+'Test connection</button></div></div>').join('');
+  document.querySelectorAll('[data-cfg]').forEach(b=>b.onclick=()=>{
+    const m=MODULES[+b.dataset.cfg];
+    openDlg('Configure — '+m.name,
+      '<div class="fgrid">'+f('Endpoint','cfg-ep','https://api.cloudnine.envisionware.com/'+m.key,'text','full')+f('API credential','cfg-key','(stored in secret store)')+f('Branch scope','cfg-scope','All branches')+'</div>'+
+      '<p style="font-size:12.5px;color:var(--ink-muted);margin:12px 0 0">Config lives in the ModuleInstance row (jsonb); credentials go to the secret store, never the row.</p>',
+      '<button class="btn" id="cfgSave">'+ic('check')+'Save config</button>');
+    $('#cfgSave').onclick=()=>{ closeDlg(); toast('Config saved (mock) — POST /api/v1/admin/modules/'+m.key+'/config'); };
+  });
+  document.querySelectorAll('[data-test]').forEach(b=>b.onclick=()=>{
+    const m=MODULES[+b.dataset.test];
+    b.disabled=true; b.textContent='Testing…';
+    setTimeout(()=>{ b.disabled=false; b.innerHTML=ic('refresh')+'Test connection'; toast(m.name+': health check '+(m.health==='green'?'OK — 200 in 62ms':'DEGRADED — locker heartbeat stale (amber)')); if(m.health!=='green'){} },700);
+  });
+}
+function catalogDialog(){
+  const enabledPids=new Set(MODULES.map(m=>m.pid));
+  openDlg('Add product — EnvisionWare catalog',
+    '<p style="font-size:13px;color:var(--ink-muted);margin:0 0 12px">Enable → configure → health-check. Adding a product registers its AI tools with the orchestrator automatically (R5/R15).</p>'+
+    CATALOG.map((p,i)=>'<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)"><span class="pid" style="font-size:11px;font-weight:700;color:var(--primary-strong);background:var(--primary-soft);border-radius:5px;padding:1px 7px">'+p.pid+'</span><b style="font-size:13.5px;flex:1">'+esc(p.name)+'</b>'+
+      (enabledPids.has(p.pid)?'<span class="badge b-pass">Enabled</span>':'<button class="btn sm" data-enable="'+i+'">Enable</button>')+'</div>').join(''),
+    '');
+  document.querySelectorAll('[data-enable]').forEach(b=>b.onclick=()=>enableStepper(CATALOG[+b.dataset.enable]));
+}
+function enableStepper(p){
+  openDlg('Enable '+p.name,
+    '<div class="stepper">'+
+    '<div class="step" id="st0"><span class="bub">1</span><div><b>Enable</b><div class="sd">Create the ModuleInstance row for this library</div></div></div>'+
+    '<div class="step" id="st1"><span class="bub">2</span><div><b>Configure</b><div class="sd">Endpoint + credentials into the secret store</div></div></div>'+
+    '<div class="step" id="st2"><span class="bub">3</span><div><b>Health check</b><div class="sd">CheckHealthAsync must return green before patron exposure</div></div></div>'+
+    '</div><div id="stepMsg" style="font-size:13px;color:var(--ink-muted)"></div>','');
+  let i=0;
+  const tick=()=>{
+    if(i>0) document.getElementById('st'+(i-1)).classList.replace('now','done');
+    if(i<3){ document.getElementById('st'+i).classList.add('now'); i++; setTimeout(tick,650); }
+    else{
+      $('#stepMsg').innerHTML='<span class="badge b-pass">Health: green</span> '+esc(p.name)+' is live for Pioneer Library System.';
+      MODULES.push({key:p.pid.toLowerCase(),pid:p.pid,name:p.name,health:'green',calls:['GET /status']});
+      setTimeout(()=>{ closeDlg(); render(); toast(p.name+' enabled (mock)'); },900);
+    }
+  };
+  tick();
+}
+
+/* ---------- 6. QR CODES (R1) ---------- */
+function qrSvg(seed,size){
+  size=size||120; const n=21, cell=size/n;
+  let h=0; for(let i=0;i<seed.length;i++) h=(h*31+seed.charCodeAt(i))|0;
+  const rnd=()=>{ h^=h<<13; h^=h>>17; h^=h<<5; return ((h>>>0)%100)/100; };
+  let s='<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" role="img" aria-label="QR code placeholder"><rect width="'+size+'" height="'+size+'" fill="#fff"/>';
+  const finder=(x,y)=>{ s+='<rect x="'+(x*cell)+'" y="'+(y*cell)+'" width="'+(7*cell)+'" height="'+(7*cell)+'" fill="#23242A"/><rect x="'+((x+1)*cell)+'" y="'+((y+1)*cell)+'" width="'+(5*cell)+'" height="'+(5*cell)+'" fill="#fff"/><rect x="'+((x+2)*cell)+'" y="'+((y+2)*cell)+'" width="'+(3*cell)+'" height="'+(3*cell)+'" fill="#23242A"/>'; };
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    const inF=(x<8&&y<8)||(x>n-9&&y<8)||(x<8&&y>n-9); if(inF) continue;
+    if(rnd()>0.55) s+='<rect x="'+(x*cell)+'" y="'+(y*cell)+'" width="'+cell+'" height="'+cell+'" fill="#23242A"/>';
+  }
+  finder(0,0); finder(n-7,0); finder(0,n-7);
+  return s+'</svg>';
+}
+function vQr(w){
+  const c=document.createElement('div'); c.className='card';
+  c.innerHTML='<h2>QR placements</h2><p class="desc">Each QR code is the entry point identity (R1): scan → PatronSession + billable qr_scan UsageEvent. Codes are scoped library → branch → placement.</p>'+
+    '<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" id="qrNew">'+ic('plus')+'Generate new</button></div>'+
+    '<div style="overflow-x:auto"><table><thead><tr><th>Placement</th><th>Code ID</th><th>Scans · 7 days</th><th></th></tr></thead><tbody>'+
+    QRS.map((q,i)=>'<tr><td><b>'+esc(q.label)+'</b></td><td class="mono">'+esc(q.id)+'</td><td>'+fmt(q.scans7d)+' <span class="badge b-sample">sample</span></td>'+
+      '<td><button class="btn ghost sm" data-poster="'+i+'">'+ic('printer')+'Print signage</button></td></tr>').join('')+
+    '</tbody></table></div>';
+  w.append(c);
+  $('#qrNew').onclick=()=>{
+    openDlg('Generate QR code',
+      '<div class="fgrid"><div class="f"><label for="qr-branch">Branch</label><select id="qr-branch">'+(D.branches||[]).map(b=>'<option value="'+esc(b.id)+'">'+esc(b.name)+'</option>').join('')+'</select></div>'+
+      f('Placement label','qr-label','Entrance')+'</div>',
+      '<button class="btn" id="qrGen">'+ic('qr')+'Generate</button>');
+    $('#qrGen').onclick=()=>{
+      const br=(D.branches||[]).find(b=>b.id===$('#qr-branch').value)||{};
+      const lbl=$('#qr-label').value.trim()||'Entrance';
+      QRS.push({id:'qr-'+br.id+'-'+lbl.toLowerCase().replace(/\W+/g,'-'),label:br.name+' — '+lbl,scans7d:0});
+      closeDlg(); render(); toast('QR code generated (mock) — POST /api/v1/admin/qrcodes');
+    };
+  };
+  w.querySelectorAll('[data-poster]').forEach(b=>b.onclick=()=>{
+    const q=QRS[+b.dataset.poster];
+    openDlg('Signage preview',
+      '<div class="poster"><div class="ph"><b>'+esc((D.theme||{}).shortName||'Pioneer Library')+'</b><span>'+esc((D.theme||{}).tagline||'')+'</span></div>'+
+      '<div class="pq">'+qrSvg(q.id,170)+'</div>'+
+      '<div class="pf"><div class="cta">Scan to get started</div><div class="loc">'+esc(q.label)+'</div><div class="pow">Powered by EnvisionWare</div></div></div>',
+      '<button class="btn" id="posterPrint">'+ic('printer')+'Print</button>');
+    $('#posterPrint').onclick=()=>{ closeDlg(); toast('Sent to printer (mock) — production renders a PDF at /admin/qrcodes/{id}/signage'); };
+  });
+}
+
+/* ---------- 7. BRANDING (R7) ---------- */
+function vBranding(w){
+  const rows=[
+    ['brand-primary',T.brandPrimary,'Primary actions, nav, headers'],
+    ['brand-primary-strong',T.brandPrimaryStrong,'Hover / deep headers'],
+    ['brand-accent',T.brandAccent,'Large text & graphics only'],
+    ['brand-accent-deep',T.brandAccentDeep,'Body-size links'],
+    ['brand-accent-2',T.brandAccent2,'Decorative / CTA highlights only'],
+    ['highlight',T.highlight,'Badges, sparingly'],
+    ['ink',T.ink,'Body text'],
+    ['ink-muted',T.inkMuted,'Secondary text'],
+    ['success',T.success,'Status'],['warning',T.warning,'Status'],['danger',T.danger,'Status']
+  ].filter(r=>r[1]);
+  const sw=rows.map(r=>{
+    const cr=ratio(r[1],'#FFFFFF');
+    const badge = cr>=4.5?'<span class="badge b-pass">AA body '+cr.toFixed(1)+':1</span>' : cr>=3?'<span class="badge b-warn">AA large only '+cr.toFixed(1)+':1</span>' : '<span class="badge b-fail">Fails as text '+cr.toFixed(1)+':1</span>';
+    const onTok=ratio('#FFFFFF',r[1]);
+    const lum=relLum(r[1]);
+    return '<div class="swatch"><div class="chip" style="background:'+r[1]+';color:'+(lum>0.45?'#23242A':'#fff')+'">'+r[0]+'</div>'+
+      '<div class="info"><b>'+r[0]+'</b><span class="mono">'+r[1]+'</span>'+badge+
+      '<div style="font-size:11.5px;color:var(--ink-faint);margin-top:6px">'+esc(r[2])+' · white-on-token '+onTok.toFixed(1)+':1</div></div></div>';
+  }).join('');
+  w.insertAdjacentHTML('beforeend',
+    '<div class="card"><h2>Theme — Pioneer Library System</h2><p class="desc">Branding is data, not code (ThemeConfig per library). Contrast badges are <b>live-computed WCAG ratios vs white</b> — the theme validator blocks publishing any palette that breaks AA.</p><div class="swatches">'+sw+'</div></div>'+
+    '<div class="cardrow"><div class="card"><h2>Logo</h2><p class="desc">Per-library logo slot (SVG preferred).</p>'+
+      '<div style="border:1.5px dashed var(--primary-line);border-radius:12px;padding:26px;text-align:center;color:var(--ink-muted)">'+ic('upload')+'<div style="margin-top:6px;font-size:13px">Drop logo here or <button class="btn ghost sm" id="logoBtn">browse</button></div><div style="font-size:11.5px;color:var(--ink-faint);margin-top:4px">Demo shows the Pioneer wordmark</div></div></div>'+
+    '<div class="card"><h2>Powered by EnvisionWare</h2><p class="desc">Contractual lockup — footer on phone, chrome on kiosk.</p>'+
+      '<div style="display:flex;align-items:center;gap:12px;background:#F4F1F8;border-radius:10px;padding:14px 16px">'+ic('lock')+'<div style="flex:1"><b style="font-size:13.5px">Show "Powered by EnvisionWare"</b><div style="font-size:12px;color:var(--ink-muted)">Cannot be disabled via theme</div></div>'+
+      '<label style="opacity:.5" title="Contractual mark — not removable via theme (R7)"><input type="checkbox" checked disabled aria-label="Powered by EnvisionWare (locked on)"></label></div>'+
+      '<p style="font-size:12px;color:var(--ink-faint);margin:10px 0 0">Typography: Alexandria (Google Fonts) for UI; demo substitutes the system stack offline.</p></div></div>');
+  const lb=$('#logoBtn'); if(lb) lb.onclick=()=>toast('Logo upload is mocked in this build');
+}
+
+/* ---------- 8. USERS & SSO (R12/D4) ---------- */
+function libDomain(){
+  const e=(STAFF.find(u=>/@/.test(u.email||''))||{}).email||'';
+  return e.split('@')[1] || 'pioneerlibrarysystem.org';
+}
+function vUsers(w){
+  w.insertAdjacentHTML('beforeend','<div class="card"><h2>Staff accounts</h2><p class="desc">Local accounts + RBAC now; external identity per connector below (D4). Roles gate both this console and the API. Account emails (invites, password resets, temporary passwords) are sent from <b>no-reply@'+esc(libDomain())+'</b> via the library email connector.</p>'+
+    '<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" id="invite">'+ic('plus')+'Invite user</button></div>'+
+    '<div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Role</th><th>Scope</th><th>Identity</th><th>Last active</th><th>Manage</th></tr></thead><tbody>'+
+    STAFF.map((u,i)=>'<tr><td><b>'+esc(u.name)+'</b><div class="mono">'+esc(u.email)+'</div></td><td>'+esc(u.role)+'</td><td>'+esc(u.branch)+'</td><td>'+esc(u.idp)+'</td><td>'+esc(u.last)+'</td>'+
+      '<td style="white-space:nowrap">'+
+        '<button class="btn ghost sm" data-reset="'+i+'">'+ic('refresh')+'Reset</button> '+
+        '<button class="btn ghost sm" data-temp="'+i+'">'+ic('lock')+'Temp password</button> '+
+        '<button class="iconbtn" data-del="'+i+'" aria-label="Delete '+esc(u.name)+'">'+ic('trash')+'</button>'+
+      '</td></tr>').join('')+
+    '</tbody></table></div></div>'+
+    '<div class="card"><h2>Single sign-on</h2><p class="desc">Libraries sit under city/county IT (Entra), school districts (Google), and everything else (OIDC/SAML).</p>'+
+    '<div class="ssocards">'+
+      ssoCard('Microsoft Entra ID','City/county tenant federation',true)+
+      ssoCard('Google Workspace','School-district identity',false)+
+      ssoCard('Generic OIDC / SAML','Everything else',false)+
+    '</div></div>');
+  $('#invite').onclick=()=>{
+    openDlg('Invite user','<div class="fgrid">'+f('Email','inv-email','','email','full')+
+      '<div class="f"><label for="inv-role">Role</label><select id="inv-role">'+ROLES.map(r=>'<option>'+r+'</option>').join('')+'</select></div>'+
+      '<div class="f"><label for="inv-scope">Scope</label><select id="inv-scope"><option>System</option>'+(D.branches||[]).map(b=>'<option>'+esc(b.name)+'</option>').join('')+'</select></div></div>',
+      '<button class="btn" id="invSend">'+ic('check')+'Send invite</button>');
+    $('#invSend').onclick=()=>{ const em=($('#inv-email').value||'new.user@'+libDomain()).trim(); const role=$('#inv-role').value; closeDlg(); emailStub(em, 'You’re invited to PatronIQ Admin',
+      'You’ve been added to the '+(D.theme&&D.theme.name||'library')+' PatronIQ admin console as <b>'+esc(role)+'</b>.<br><br>Set your password to activate your account:',
+      {cta:'Set your password', note:'Invite recorded — POST /api/v1/admin/users. Roles gate the console + API.'}); };
+  };
+  // Account management (D4): reset password, set temporary password, delete user.
+  w.querySelectorAll('[data-reset]').forEach(b=>b.onclick=()=>{ const u=STAFF[+b.dataset.reset];
+    emailStub(u.email, 'Reset your PatronIQ password',
+      'Hi '+esc(u.name.split(' ')[0])+', we received a request to reset your PatronIQ password. Click below to choose a new one. This link expires in 60 minutes. If you didn’t request it, ignore this email.',
+      {cta:'Reset password', note:'Reset link generated (mock) — PUT /api/v1/admin/users/{id}/reset'}); });
+  w.querySelectorAll('[data-temp]').forEach(b=>b.onclick=()=>{ const u=STAFF[+b.dataset.temp]; const pw=genTempPw();
+    emailStub(u.email, 'Your temporary PatronIQ password',
+      'Hi '+esc(u.name.split(' ')[0])+', a temporary password has been set for your account. Sign in with it and you’ll be prompted to choose a new password.<br><br>Temporary password: <b style="font-family:ui-monospace,Consolas,monospace;font-size:16px">'+pw+'</b>',
+      {note:'Temp password set + must-change flag (mock) — PUT /api/v1/admin/users/{id}/temp-password'}); });
+  w.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.del, u=STAFF[i];
+    if(confirm('Delete '+u.name+' ('+u.email+')? This revokes their access immediately.')){ STAFF.splice(i,1); render(); toast('User deleted — DELETE /api/v1/admin/users/{id}'); } });
+  w.querySelectorAll('[data-sso]').forEach(b=>b.onclick=()=>toast(b.dataset.sso+' connector config is mocked in this build'));
+}
+function genTempPw(){ const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789abcdefghijkmnpqrstuvwxyz'; let s=''; for(let i=0;i<10;i++) s+=a[Math.floor((Date.now()*(i+7))%a.length)]; return 'PLS-'+s; }
+// Email client stub — composes the message the library email connector would send, from the
+// library's own domain. Spec: swap for the site's SMTP/Graph/Gmail connector at install.
+function emailStub(to, subject, bodyHtml, opts){
+  opts=opts||{};
+  const from='no-reply@'+libDomain();
+  openDlg('Library email — outbound (stub)',
+    '<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden">'+
+    '<div style="background:var(--surface-2,#f4eff9);padding:12px 16px;font-size:13px;border-bottom:1px solid var(--line)">'+
+      '<div><b>From:</b> '+esc(from)+'</div><div><b>To:</b> '+esc(to)+'</div><div><b>Subject:</b> '+esc(subject)+'</div></div>'+
+    '<div style="padding:16px;font-size:14px;line-height:1.5">'+bodyHtml+
+      (opts.cta?'<div style="margin-top:16px"><span style="display:inline-block;background:var(--primary,#67338E);color:#fff;border-radius:8px;padding:10px 16px;font-weight:600">'+esc(opts.cta)+'</span></div>':'')+
+      '<div style="margin-top:18px;color:var(--ink-muted);font-size:12px">'+esc(D.theme&&D.theme.name||'Library')+' · sent via the library email connector</div>'+
+    '</div></div>'+
+    '<p class="desc" style="margin-top:12px">'+esc(opts.note||'Email composed (stub). Configure the SMTP/Microsoft 365/Gmail connector under Connections at install.')+'</p>',
+    '<button class="btn" id="mailSend">'+ic('check')+'Send email</button>');
+  $('#mailSend').onclick=()=>{ closeDlg(); toast('Email sent to '+to+' (stub)'); if(window.PIQNotes&&PIQNotes.push) PIQNotes.push('Sent account email: "'+subject+'" to '+to,'admin · users'); };
+}
+function ssoCard(name,desc,configured){
+  return '<div class="ssocard"><b>'+name+'</b><div class="sd">'+desc+'</div>'+
+    (configured?'<span class="badge b-pass">Configured</span>':'<span class="badge b-warn">Not configured</span>')+
+    ' <button class="btn ghost sm" data-sso="'+name+'" style="margin-left:6px">'+ic('gear')+'Configure</button></div>';
+}
+
+/* ---------- 9. ALERTS ---------- */
+function vAlerts(w){
+  const active=ALERTS.filter(a=>a.status==='active').length;
+  w.insertAdjacentHTML('beforeend','<div class="card"><h2>Staff alert console <span class="badge b-mock">'+active+' active</span></h2>'+
+    '<p class="desc">Escalations from the patron concierge. Production delivers these over SignalR with acknowledge flow; safety is always urgent. Alerts expire after 15 minutes unacknowledged.</p><div id="alertList"></div></div>');
+  drawAlerts();
+}
+function drawAlerts(){
+  const box=$('#alertList'); if(!box) return;
+  box.innerHTML=ALERTS.map((a,i)=>'<div class="alert-item" style="'+(a.status==='acknowledged'?'opacity:.6':'')+'">'+
+    '<span class="badge '+(a.urgency==='urgent'?'u-urgent':'u-normal')+'">'+a.urgency+'</span>'+
+    '<div class="body"><div class="q">"'+esc(a.quote)+'"</div><div class="meta">'+esc(a.reason)+' · '+esc(a.branch)+' · '+esc(a.ago)+(a.status==='acknowledged'?' · acknowledged':'')+'</div></div>'+
+    (a.status==='active'?'<button class="btn sm" data-ack="'+i+'">'+ic('check')+'Acknowledge</button>':'')+
+    '</div>').join('');
+  box.querySelectorAll('[data-ack]').forEach(b=>b.onclick=()=>{ ALERTS[+b.dataset.ack].status='acknowledged'; drawAlerts(); toast('Alert acknowledged — patron kiosk shows "help is on the way"'); });
+}
+
+/* ---------- dialog helpers ---------- */
+function f(label,id,val,type,cls){ return '<div class="f '+(cls||'')+'"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="'+(type||'text')+'" value="'+esc(val==null?'':val)+'"></div>'; }
+function openDlg(title,body,foot){
+  const d=$('#dlg');
+  d.innerHTML='<div class="dlg-head"><h3>'+esc(title)+'</h3><button class="iconbtn" id="dlgX" aria-label="Close dialog">'+ic('x')+'</button></div><div class="dlg-body">'+body+'</div><div class="dlg-foot"><button class="btn ghost" id="dlgCancel">Cancel</button>'+(foot||'')+'</div>';
+  d.showModal();
+  $('#dlgX').onclick=closeDlg; $('#dlgCancel').onclick=closeDlg;
+}
+function closeDlg(){ $('#dlg').close(); }
+
+/* ---------- notes dock (shared piq_notes) ---------- */
+let notes=JSON.parse(localStorage.getItem('piq_notes')||'[]');
+function saveNotes(){ localStorage.setItem('piq_notes',JSON.stringify(notes)); }
+function renderNotes(){
+  const c=$('#noteList'); c.innerHTML='';
+  notes.forEach((n,i)=>{
+    const d=document.createElement('div'); d.className='note';
+    d.innerHTML='<button class="x" data-i="'+i+'" aria-label="Delete note">'+ic('x')+'</button><div class="meta">'+esc(n.context||'')+'</div>'+esc(n.text);
+    c.append(d);
+  });
+  c.querySelectorAll('.x').forEach(x=>x.onclick=()=>{ notes.splice(+x.dataset.i,1); saveNotes(); renderNotes(); });
+}
+$('#addNote').onclick=()=>{
+  const t=$('#noteInput').value.trim(); if(!t) return;
+  notes.push({text:t,context:'admin · '+view+(view==='content'?'/'+contentTab:'')});
+  saveNotes(); renderNotes(); $('#noteInput').value='';
+};
+$('#clearNotes').onclick=()=>{ if(confirm('Clear all notes?')){ notes=[]; saveNotes(); renderNotes(); } };
+$('#copyNotes').onclick=()=>{
+  let md='# PatronIQ admin mock — iteration request\n\n';
+  if(notes.length){ md+='## Notes\n'; notes.forEach((n,i)=>md+=(i+1)+'. '+n.text+'  _('+(n.context||'')+')_\n'); md+='\n'; }
+  if(eventsDirty()){ md+='## Events edited in the mock (localStorage piq_admin_events)\n```json\n'+JSON.stringify(EVENTS,null,2)+'\n```\n'; }
+  if(!notes.length && !eventsDirty()) md+='(No notes or event edits yet.)\n';
+  navigator.clipboard.writeText(md).then(()=>toast('Copied — paste into chat'));
+};
+
+/* ---------- dock / nav plumbing ---------- */
+document.querySelectorAll('.dock .tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.dock .tab').forEach(x=>x.classList.toggle('active',x===t));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+t.dataset.pane));
+});
+$('#dockToggle').onclick=()=>$('#dock').classList.toggle('open');
+$('#dockFab').onclick=()=>$('#dock').classList.toggle('open');
+$('#navToggle').onclick=()=>$('#sidenav').classList.toggle('open');
+$('#navFab').onclick=()=>$('#sidenav').classList.toggle('open');
+
+/* ---------- init ---------- */
+renderRoleGrid();
+renderNotes();
+if(role){ selRole=role; enterApp(); }
+</script>
+<script src="../workbench-data/notes-sync.js"></script>
+</body>
+</html>

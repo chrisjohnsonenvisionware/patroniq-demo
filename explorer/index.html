@@ -1,0 +1,1213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>PatronIQ — Pioneer Library System</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#67338E" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="PatronIQ" />
+<style>
+  /* ============ Pioneer theme tokens (docs/DESIGN-SYSTEM.md §2) ============ */
+  :root{
+    --primary:#67338E; --primary-strong:#46166B;
+    --accent:#1B96D4; --accent-deep:#1E6093; --accent-tint:#45B1E7;
+    --accent2:#FF8300; --logo-red:#EA0029; --highlight:#FBD20A;
+    --ink:#23242A; --ink-muted:#515462;
+    --surface:#FFFFFF; --bg:#F7F7F7; --line:#E6E3EA;
+    --success:#15803D; --warning:#B45309; --danger:#B91C1C; --focus:#1B96D4;
+    --primary-tint:#F2ECF7; --accent-wash:#E7F2FA; --success-wash:#E4F3E9;
+    --warn-wash:#FBEEDC; --danger-wash:#FBE9E9;
+    --radius:14px; --shadow:0 8px 26px rgba(35,36,42,.10);
+    --font:'Alexandria',system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{font:16px/1.5 var(--font);color:var(--ink);background:linear-gradient(155deg,#2C1243 0%,#46166B 55%,#5A2A7E 100%);min-height:100dvh}
+  img,svg{max-width:100%}
+  a{color:var(--accent-deep)}
+  h1{font-size:28px;line-height:1.25;margin:.15em 0 .2em;font-weight:600}
+  h2{font-size:22px;line-height:1.3;margin:1.1em 0 .45em;font-weight:600}
+  h3{font-size:18px;margin:.2em 0;font-weight:600}
+  p{margin:.4em 0}
+  :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+  :focus:not(:focus-visible){outline:none}
+  .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  .skip{position:absolute;left:8px;top:-48px;z-index:100;background:var(--surface);color:var(--accent-deep);padding:10px 16px;border-radius:10px;transition:top .15s}
+  .skip:focus{top:8px}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+  /* ============ App shell (phone-first) ============ */
+  .shell{max-width:480px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;background:var(--bg);position:relative}
+  @media (min-width:560px){
+    .shell{height:calc(100dvh - 40px);margin:20px auto;border-radius:26px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.45)}
+  }
+  body.kiosk .shell{max-width:1040px}
+
+  .chrome{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;
+    background:linear-gradient(120deg,var(--primary-strong),var(--primary));color:#fff;flex:none}
+  .brandline{display:flex;align-items:center;gap:11px;min-width:0}
+  .logoTile{width:42px;height:42px;flex:none;border-radius:11px;background:#fff;display:grid;place-items:center}
+  .brandnames{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+  .brandnames strong{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brandnames small{font-size:12.5px;opacity:.85;letter-spacing:.04em}
+  .chromeActions{display:flex;align-items:center;gap:8px}
+  .clock{font-variant-numeric:tabular-nums;font-size:14px;opacity:.9;display:none}
+  body.kiosk .clock{display:block}
+  .iconBtn{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;border:0;cursor:pointer;background:rgba(255,255,255,.14);color:#fff}
+  .iconBtn:hover{background:rgba(255,255,255,.24)}
+
+  main{flex:1;overflow-y:auto;padding:20px 18px 30px;scroll-behavior:smooth}
+  .sub{color:var(--ink-muted);margin-top:0}
+
+  .tabbar{flex:none;display:grid;grid-template-columns:repeat(5,1fr);background:var(--surface);border-top:1px solid var(--line)}
+  .tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:58px;
+    border:0;background:none;cursor:pointer;color:var(--ink-muted);font:600 12px/1 var(--font);padding:8px 2px}
+  .tabbar button .ic{width:24px;height:24px}
+  .tabbar button[aria-current="page"]{color:var(--primary)}
+  .tabbar button[aria-current="page"] .ic{stroke-width:2.1px}
+  .powered{flex:none;display:flex;align-items:center;justify-content:center;gap:7px;padding:7px 10px;
+    background:var(--surface);border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-muted)}
+  .powered .ewMark{width:17px;height:17px;border-radius:5px;background:var(--accent-deep);color:#fff;display:grid;place-items:center;font:700 11px/1 var(--font)}
+  .powered strong{color:var(--ink);font-weight:600}
+
+  /* ============ Icons ============ */
+  .ic{width:24px;height:24px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ============ Buttons / chips / cards ============ */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 20px;
+    border:0;border-radius:12px;background:var(--primary);color:#fff;font:600 16px/1.2 var(--font);cursor:pointer;text-decoration:none}
+  .btn:hover{background:var(--primary-strong)}
+  .btn.ghost{background:var(--surface);color:var(--primary);border:1.5px solid var(--primary)}
+  .btn.ghost:hover{background:var(--primary-tint)}
+  .btn.sm{min-height:44px;padding:8px 14px;font-size:14.5px;border-radius:10px}
+  .btn.quiet{background:none;border:1.5px solid var(--line);color:var(--ink-muted)}
+  .btn.quiet:hover{border-color:var(--ink-muted)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .chip{display:inline-flex;align-items:center;min-height:44px;padding:8px 16px;border-radius:999px;cursor:pointer;
+    background:var(--surface);border:1.5px solid var(--line);color:var(--ink);font:500 14.5px/1.25 var(--font);text-align:left}
+  .chip:hover{border-color:var(--primary);background:var(--primary-tint)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-top:14px;box-shadow:0 3px 12px rgba(35,36,42,.05)}
+  .badge{display:inline-flex;align-items:center;gap:5px;font:600 12.5px/1 var(--font);padding:5px 10px;border-radius:999px}
+  .b-ok{background:var(--success-wash);color:var(--success)}
+  .b-warn{background:var(--warn-wash);color:var(--warning)}
+  .b-danger{background:var(--danger-wash);color:var(--danger)}
+  .b-neutral{background:var(--primary-tint);color:var(--primary)}
+  .b-blue{background:var(--accent-wash);color:var(--accent-deep)}
+  .muted{color:var(--ink-muted)}
+  .rowline{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
+  .rowline:last-child{border-bottom:0}
+  .rowline .t{font-weight:600}
+  .rowline .d{font-size:14px;color:var(--ink-muted);margin-top:2px}
+
+  /* ============ Home ============ */
+  .askForm{display:flex;gap:9px;margin-top:14px}
+  .askForm input{flex:1;min-width:0;font:16px/1.4 var(--font);padding:13px 16px;border:1.5px solid var(--line);border-radius:13px;background:var(--surface);color:var(--ink)}
+  .askForm input::placeholder{color:var(--ink-muted)}
+  .askForm input:focus{outline:2px solid var(--focus);outline-offset:0;border-color:var(--focus)}
+  .askForm .btn{padding:10px 16px}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:10px}
+  body.kiosk .tiles{grid-template-columns:repeat(3,1fr)}
+  .tile{display:flex;flex-direction:column;align-items:flex-start;gap:8px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:16px 15px;cursor:pointer;text-align:left;min-height:112px;font-family:var(--font)}
+  .tile:hover{border-color:var(--primary);box-shadow:var(--shadow)}
+  .tile .ic{color:var(--primary);width:26px;height:26px}
+  .tile .tt{font-weight:600;font-size:15.5px;color:var(--ink)}
+  .tile .td{font-size:13px;color:var(--ink-muted);line-height:1.4}
+  .eventPrev{display:flex;flex-direction:column}
+  .linkish{background:none;border:0;color:var(--accent-deep);font:600 15px var(--font);cursor:pointer;text-decoration:underline;padding:10px 2px;min-height:44px}
+
+  /* ============ Kiosk attract hero ============ */
+  .kioskHero{display:none}
+  body.kiosk .kioskHero{display:grid;grid-template-columns:1.25fr .75fr;gap:26px;align-items:center;
+    background:linear-gradient(130deg,var(--primary-strong),var(--primary));color:#fff;border-radius:20px;padding:34px 32px;margin-bottom:22px}
+  .kioskHero h1{font-size:40px;color:#fff;margin:0 0 .25em}
+  .kioskHero p{font-size:19px;opacity:.92;max-width:34ch}
+  .kioskHero ol{margin:16px 0 0;padding-left:22px;font-size:17px;line-height:1.7}
+  .qrPanel{background:#fff;border-radius:18px;padding:18px 18px 12px;color:var(--ink);text-align:center;max-width:300px;justify-self:end}
+  .qrPanel .cap{font:600 15px/1.35 var(--font);margin-top:10px;color:var(--ink)}
+  .qrPanel .capsub{font-size:12.5px;color:var(--ink-muted);margin:4px 0 6px;word-break:break-all}
+  body.kiosk h1{font-size:34px}
+  body.kiosk h2{font-size:26px}
+  body.kiosk main{font-size:18px;padding:26px 30px 40px}
+  body.kiosk .btn{min-height:60px;font-size:18px}
+  body.kiosk .chip{min-height:56px;font-size:17px}
+  body.kiosk .tile{min-height:150px;padding:22px}
+  body.kiosk .tile .tt{font-size:19px}
+  body.kiosk .tile .td{font-size:15px}
+  body.kiosk .tabbar button{min-height:72px;font-size:14px}
+  @media (max-width:760px){body.kiosk .kioskHero{grid-template-columns:1fr}.qrPanel{justify-self:center}}
+
+  /* ============ Concierge ============ */
+  .thread{display:flex;flex-direction:column;gap:12px;padding-bottom:8px}
+  .bubble{align-self:flex-end;max-width:85%;background:var(--primary);color:#fff;border-radius:16px 16px 4px 16px;padding:11px 15px;font-size:15.5px}
+  .aiCard{align-self:stretch;background:var(--surface);border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:15px 16px;box-shadow:0 3px 12px rgba(35,36,42,.05)}
+  .routeTag{display:inline-flex;align-items:center;gap:5px;font:700 11.5px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;border-radius:999px;margin-bottom:8px}
+  .rt-clarify{background:var(--warn-wash);color:var(--warning)}
+  .rt-transaction{background:var(--success-wash);color:var(--success)}
+  .rt-wayfind{background:var(--accent-wash);color:var(--accent-deep)}
+  .rt-answer{background:var(--primary-tint);color:var(--primary)}
+  .rt-escalate{background:var(--danger-wash);color:var(--danger)}
+  .aiLead{font-size:16.5px;font-weight:600;margin:2px 0 4px}
+  .aiBody{font-size:15.5px}
+  .aiBody p{margin:.35em 0}
+  .directions{background:var(--accent-wash);border-left:3px solid var(--accent-deep);border-radius:8px;padding:10px 13px;margin-top:10px;font-size:15px}
+  .escalateBanner{background:var(--danger-wash);border:1px solid #F2C9C9;border-radius:14px;padding:18px;text-align:center;margin-top:6px}
+  .escalateBanner .big{font-size:20px;font-weight:600}
+  .waitPill{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:999px;padding:7px 15px;font-weight:600;margin-top:9px}
+  .composer{position:sticky;bottom:0;background:linear-gradient(180deg,rgba(247,247,247,0),var(--bg) 32%);padding-top:14px}
+  .minimap{width:100%;height:auto;border:1px solid var(--line);border-radius:12px;margin-top:12px;background:#fff}
+  .thinking{color:var(--ink-muted);font-size:15px;display:flex;align-items:center;gap:8px}
+
+  /* ============ Level beneath (R9) ============ */
+  .beneath{margin-top:12px;border:1px dashed #C9BFD6;border-radius:10px;background:#FAF8FC}
+  .beneath summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;padding:9px 12px;min-height:44px;
+    font:600 12.5px/1.3 var(--font);color:var(--primary);letter-spacing:.02em}
+  .beneath summary::-webkit-details-marker{display:none}
+  .beneath summary .ic{width:17px;height:17px}
+  .beneath .bcalls{padding:2px 12px 11px;display:flex;flex-direction:column;gap:5px}
+  .beneath code{font:12.5px/1.45 ui-monospace,Consolas,'Cascadia Mono',monospace;background:#F1EDF6;border-radius:6px;padding:4px 8px;color:#3E2A52;word-break:break-all}
+
+  /* ============ Account ============ */
+  .field{margin-top:14px}
+  .field label{display:block;font:600 14px/1.3 var(--font);margin-bottom:5px}
+  .field input{width:100%;font:16px/1.4 var(--font);padding:12px 14px;border:1.5px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink)}
+  .field input:focus{outline:2px solid var(--focus);outline-offset:0;border-color:var(--focus)}
+  .formErr{color:var(--danger);font-size:14px;margin-top:8px;font-weight:500}
+  .feeTotal{display:flex;justify-content:space-between;align-items:center;padding-top:12px;font-weight:600;font-size:17px}
+  .guide{display:flex;gap:11px;align-items:flex-start;background:var(--primary-tint);border-radius:12px;padding:13px 14px;margin-top:10px;font-size:14.5px}
+  .guide .ic{color:var(--primary);width:20px;height:20px;margin-top:1px}
+
+  /* ============ Events / rooms ============ */
+  .seriesChip{display:inline-block;font:600 11.5px/1 var(--font);letter-spacing:.05em;text-transform:uppercase;color:var(--accent-deep);background:var(--accent-wash);border-radius:6px;padding:4px 8px;margin-bottom:7px}
+  .meta{font-size:14px;color:var(--ink-muted)}
+  .slotRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
+  .slot{min-height:44px;min-width:72px;padding:8px 13px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);
+    font:600 14.5px/1.2 var(--font);color:var(--ink);cursor:pointer}
+  .slot:hover{border-color:var(--primary);background:var(--primary-tint)}
+  .slot.taken{color:var(--ink-muted);background:var(--bg);cursor:not-allowed;text-decoration:line-through}
+  .slot.mine{background:var(--success-wash);border-color:var(--success);color:var(--success)}
+  .confirmNote{display:flex;gap:9px;align-items:flex-start;background:var(--success-wash);border-radius:11px;padding:12px 13px;margin-top:12px;font-size:14.5px;color:#14532D}
+  .confirmNote .ic{color:var(--success);width:20px;height:20px;margin-top:1px}
+  .equip{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .equip span{font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--ink-muted)}
+
+  /* ============ Dialogs ============ */
+  #dialogHost .scrim{position:fixed;inset:0;background:rgba(28,14,42,.55);z-index:70}
+  #dialogHost .dlg{position:fixed;left:50%;bottom:0;transform:translateX(-50%);z-index:71;width:min(480px,100vw);
+    max-height:88dvh;overflow-y:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:20px 20px 26px;box-shadow:0 -12px 50px rgba(0,0,0,.35)}
+  @media (min-width:560px){#dialogHost .dlg{bottom:auto;top:50%;transform:translate(-50%,-50%);border-radius:20px}}
+  .dlgTitle{margin:0 0 4px;font-size:21px}
+  .dlgActions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+  .payAmount{font-size:34px;font-weight:600;margin:6px 0 2px}
+  .payTabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:16px 0 14px}
+  .payTabs button{min-height:52px;border-radius:11px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;
+    font:600 12.5px/1.15 var(--font);color:var(--ink-muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px 2px}
+  .payTabs button[aria-selected="true"]{border-color:var(--primary);color:var(--primary);background:var(--primary-tint)}
+  .payTabs .ic{width:20px;height:20px}
+  .walletBtn{width:100%;min-height:52px;border-radius:12px;border:0;background:#000;color:#fff;font:600 17px/1 var(--font);
+    display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;margin-top:12px}
+  .walletBtn:hover{background:#1c1c1e}
+  .walletBtn .gG{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#4285F4;font:700 14px/1 Arial,var(--font)}
+  .walletBtn.cash{background:#00D632;color:#fff}
+  .walletBtn.cash:hover{background:#00B82B}
+  .walletSheet{border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px;background:var(--bg)}
+  .walletSheet .wrow{display:flex;justify-content:space-between;font-size:15px;padding:6px 0}
+  .qrPayBox{max-width:230px;margin:14px auto 4px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;text-align:center}
+  .qrPayBox .cap{font:600 13.5px/1.3 var(--font);margin-top:8px}
+  .receipt{border:1px solid var(--line);border-radius:13px;padding:15px;margin-top:14px;background:var(--bg)}
+  .receipt .rrow{display:flex;justify-content:space-between;gap:10px;font-size:14.5px;padding:4px 0}
+  .receipt .rrow.total{border-top:1px solid var(--line);margin-top:6px;padding-top:9px;font-weight:600;font-size:16px}
+  .splits{display:flex;align-items:center;gap:7px;margin-top:11px;font-size:12.5px;color:var(--ink-muted)}
+  .payDone{text-align:center;padding-top:6px}
+  .payDone .okRing{width:58px;height:58px;border-radius:50%;background:var(--success-wash);display:grid;place-items:center;margin:4px auto 10px;color:var(--success)}
+  .spin{width:20px;height:20px;border:2.5px solid var(--line);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .settingsBlock{border-top:1px solid var(--line);margin-top:16px;padding-top:14px}
+  .settingsBlock h3{font-size:15.5px;margin-bottom:6px}
+  .switchRow{display:flex;align-items:flex-start;gap:10px;min-height:44px;padding:6px 0}
+  .switchRow input{width:20px;height:20px;margin-top:2px;accent-color:var(--primary)}
+  .switchRow label{font-size:15px}
+  .hint{font-size:13px;color:var(--ink-muted);margin-top:5px;line-height:1.45}
+  .radioRow{display:flex;align-items:center;gap:9px;min-height:44px}
+  .radioRow input{width:19px;height:19px;accent-color:var(--primary)}
+
+  /* ============ Notes dock ============ */
+  .fab{position:fixed;right:max(14px,calc(50vw - 240px + 14px));bottom:112px;z-index:60;width:54px;height:54px;border-radius:50%;
+    border:0;background:var(--accent-deep);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.35)}
+  .fab:hover{background:#174C75}
+  body.kiosk .fab{right:16px}
+  @media (max-width:560px){.fab{right:14px}}
+  .dock{position:fixed;top:0;right:0;bottom:0;z-index:80;width:min(400px,100vw);background:#241333;color:#EFE9F5;
+    display:flex;flex-direction:column;box-shadow:-14px 0 40px rgba(0,0,0,.4);transform:translateX(105%);transition:transform .2s ease}
+  .dock.open{transform:none}
+  .dockHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #3A2450}
+  .dockHead h2{margin:0;font-size:17px;color:#fff}
+  .dockBody{flex:1;overflow-y:auto;padding:16px}
+  .dockBody .small{font-size:13px;color:#BBA9CC;line-height:1.5}
+  .dockBody textarea{width:100%;margin-top:10px;background:#1A0D27;color:#EFE9F5;border:1px solid #3A2450;border-radius:10px;padding:10px;
+    font:14px/1.5 var(--font);resize:vertical;min-height:74px}
+  .dockBody textarea:focus{outline:2px solid var(--focus)}
+  .dockBtn{width:100%;min-height:46px;margin-top:9px;border:0;border-radius:10px;background:var(--accent-deep);color:#fff;font:600 14.5px var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+  .dockBtn.alt{background:#3A2450}
+  .dockBtn:hover{filter:brightness(1.12)}
+  .noteItem{background:#2E1A40;border:1px solid #3A2450;border-radius:10px;padding:10px 12px;margin-top:9px;font-size:14px}
+  .noteItem .meta{font:11.5px/1.4 ui-monospace,Consolas,monospace;color:#9C87B5;margin-bottom:4px;word-break:break-word}
+  .noteItem .del{float:right;background:none;border:0;color:#9C87B5;cursor:pointer;padding:6px;margin:-6px -6px 0 4px;min-width:32px;min-height:32px}
+  .noteItem .del:hover{color:#fff}
+  .dockClose{background:none;border:0;color:#BBA9CC;cursor:pointer;width:44px;height:44px;display:grid;place-items:center;border-radius:10px}
+  .dockClose:hover{color:#fff;background:#3A2450}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="shell">
+  <header class="chrome">
+    <div class="brandline">
+      <span class="logoTile" aria-hidden="true">
+        <!-- Pioneer logo approximation: red angular P-flame + orange swoosh -->
+        <svg width="30" height="30" viewBox="0 0 32 32">
+          <path fill="#EA0029" d="M13 2l7.5 5.4-4.1 2.4 5.6 3.4L11 24.5l2.8-8.3-5.1 2.1L13 2z"/>
+          <path fill="#FF8300" d="M4.5 25.4c6.2 3.9 17.2 3.7 23-1.7-3.4 6.4-17.6 8.1-23 1.7z"/>
+        </svg>
+      </span>
+      <span class="brandnames"><strong id="brandName">Pioneer Library</strong><small>PatronIQ</small></span>
+    </div>
+    <div class="chromeActions">
+      <span class="clock" id="clock"></span>
+      <button class="iconBtn" id="gearBtn" aria-label="Settings" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.25"/><path d="M12 2.75v2.5M12 18.75v2.5M2.75 12h2.5M18.75 12h2.5M5.5 5.5l1.75 1.75M16.75 16.75l1.75 1.75M18.5 5.5l-1.75 1.75M7.25 16.75L5.5 18.5"/></svg></button>
+    </div>
+  </header>
+
+  <div id="announcer" class="sr-only" role="status" aria-live="polite"></div>
+
+  <main id="main" tabindex="-1"></main>
+
+  <nav class="tabbar" aria-label="Primary">
+    <button data-nav="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9.5V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.5"/><path d="M10 21v-6h4v6"/></svg>Home</button>
+    <button data-nav="concierge"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.6 0-3.1-.4-4.4-1.2L3 20l1.2-5.1A8.5 8.5 0 1 1 21 11.5Z"/><path d="M12 7.6l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z"/></svg>Ask</button>
+    <button data-nav="account"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.2 3.8-4.8 7-4.8s5.8 1.6 7 4.8"/></svg>Account</button>
+    <button data-nav="events"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="M12 12.4l.9 1.9 2.1.3-1.5 1.5.35 2.1-1.85-1-1.85 1 .35-2.1-1.5-1.5 2.1-.3z"/></svg>Events</button>
+    <button data-nav="rooms"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21h16"/><path d="M6 21V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21"/><path d="M14.5 12h.01"/></svg>Rooms</button>
+  </nav>
+
+  <footer class="powered"><span class="ewMark" aria-hidden="true">e</span><span>Powered by <strong>EnvisionWare</strong></span></footer>
+</div>
+
+<button class="fab" id="notesFab" aria-label="Open feedback notes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3.5l3.5 3.5L8 19.5l-4.5 1 1-4.5z"/><path d="M15 5.5l3.5 3.5"/></svg></button>
+
+<aside class="dock" id="notesDock" role="complementary" aria-label="Feedback notes" hidden>
+  <div class="dockHead">
+    <h2>UX feedback</h2>
+    <button class="dockClose" id="dockClose" aria-label="Close notes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="dockBody">
+    <p class="small">Leave notes as you click through — each note captures the screen (and last concierge exchange) you were on. Then <b>Copy for Claude</b> and paste back into chat to turn them into changes.</p>
+    <label class="sr-only" for="noteInput">Feedback note</label>
+    <textarea id="noteInput" placeholder="e.g. 'The payment sheet needs a receipt email option'"></textarea>
+    <button class="dockBtn" id="addNote">Add note (captures current context)</button>
+    <div id="noteList"></div>
+    <button class="dockBtn alt" id="copyNotes"><svg class="ic" style="width:17px;height:17px" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15h-.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></svg>Copy all notes for Claude</button>
+    <button class="dockBtn alt" id="clearNotes"><svg class="ic" style="width:17px;height:17px" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M9.5 6.5v-2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2M6.5 6.5l1 13.5a1 1 0 0 0 1 .9h7a1 1 0 0 0 1-.9l1-13.5"/></svg>Clear notes</button>
+  </div>
+</aside>
+
+<div id="dialogHost"></div>
+
+<script src="../workbench-data/pioneer-data.js"></script>
+<script>
+'use strict';
+/* =====================================================================
+   QR encoder — byte mode, EC level M, versions 1-10, mask auto-select.
+   Verified by round-trip decode with jsQR across v1..v10 payloads.
+   ===================================================================== */
+const QR=(()=>{
+  const EXP=new Uint8Array(512),LOG=new Uint8Array(256);
+  for(let i=0,x=1;i<255;i++){EXP[i]=x;LOG[x]=i;x<<=1;if(x&256)x^=0x11d;}
+  for(let i=255;i<510;i++)EXP[i]=EXP[i-255];
+  const mul=(a,b)=>(a&&b)?EXP[LOG[a]+LOG[b]]:0;
+  function rsGen(n){let g=[1];for(let i=0;i<n;i++){const a=EXP[i],ng=new Array(g.length+1).fill(0);for(let j=0;j<g.length;j++){ng[j]^=g[j];ng[j+1]^=mul(g[j],a);}g=ng;}return g;}
+  function rsRemainder(data,ecLen){const gen=rsGen(ecLen),res=new Array(ecLen).fill(0);
+    for(const d of data){const f=d^res[0];res.shift();res.push(0);if(f)for(let i=0;i<ecLen;i++)res[i]^=mul(gen[i+1],f);}return res;}
+  const BLOCKS=[null,
+    [[1,26,16]],[[1,44,28]],[[1,70,44]],[[2,50,32]],[[2,67,43]],
+    [[4,43,27]],[[4,49,31]],[[2,60,38],[2,61,39]],[[3,58,36],[2,59,37]],[[4,69,43],[1,70,44]]];
+  const ALIGN=[null,[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50]];
+  const dataCap=v=>BLOCKS[v].reduce((s,g)=>s+g[0]*g[2],0);
+  function chooseVersion(len){for(let v=1;v<=10;v++)if(4+(v<10?8:16)+8*len<=dataCap(v)*8)return v;return null;}
+  function buildCodewords(bytes,v){
+    const cap=dataCap(v),bits=[];
+    const push=(val,n)=>{for(let i=n-1;i>=0;i--)bits.push((val>>i)&1);};
+    push(4,4);push(bytes.length,v<10?8:16);
+    for(const b of bytes)push(b,8);
+    push(0,Math.min(4,cap*8-bits.length));
+    while(bits.length%8)bits.push(0);
+    const data=[];
+    for(let i=0;i<bits.length;i+=8){let b=0;for(let j=0;j<8;j++)b=(b<<1)|bits[i+j];data.push(b);}
+    for(let p=0;data.length<cap;p++)data.push(p%2?0x11:0xEC);
+    const blocks=[];let off=0;
+    for(const[n,total,dc]of BLOCKS[v])for(let k=0;k<n;k++){const d=data.slice(off,off+dc);off+=dc;blocks.push({d,e:rsRemainder(d,total-dc)});}
+    const out=[];
+    const maxD=Math.max(...blocks.map(b=>b.d.length));
+    for(let i=0;i<maxD;i++)for(const b of blocks)if(i<b.d.length)out.push(b.d[i]);
+    const maxE=Math.max(...blocks.map(b=>b.e.length));
+    for(let i=0;i<maxE;i++)for(const b of blocks)if(i<b.e.length)out.push(b.e[i]);
+    return out;
+  }
+  const MASKS=[
+    (i,j)=>(i+j)%2===0,(i,j)=>i%2===0,(i,j)=>j%3===0,(i,j)=>(i+j)%3===0,
+    (i,j)=>(Math.floor(i/2)+Math.floor(j/3))%2===0,(i,j)=>(i*j)%2+(i*j)%3===0,
+    (i,j)=>((i*j)%2+(i*j)%3)%2===0,(i,j)=>((i*j)%3+(i+j)%2)%2===0];
+  const digits=n=>{let d=0;while(n){d++;n>>>=1;}return d;};
+  function bch15(data){const G=0x537;let d=data<<10;while(digits(d)-digits(G)>=0)d^=G<<(digits(d)-digits(G));return((data<<10)|d)^0x5412;}
+  function bch18(v){const G=0x1F25;let d=v<<12;while(digits(d)-digits(G)>=0)d^=G<<(digits(d)-digits(G));return(v<<12)|d;}
+  function makeMatrix(v,cw,mask){
+    const N=17+4*v;
+    const M=Array.from({length:N},()=>new Array(N).fill(null));
+    const finder=(r0,c0)=>{for(let r=-1;r<=7;r++)for(let c=-1;c<=7;c++){
+      const rr=r0+r,cc=c0+c;
+      if(rr<0||rr>=N||cc<0||cc>=N)continue;
+      M[rr][cc]=(r>=0&&r<=6&&(c===0||c===6))||(c>=0&&c<=6&&(r===0||r===6))||(r>=2&&r<=4&&c>=2&&c<=4);
+    }};
+    finder(0,0);finder(N-7,0);finder(0,N-7);
+    for(const r of ALIGN[v])for(const c of ALIGN[v]){
+      if(M[r][c]!==null)continue;
+      for(let dr=-2;dr<=2;dr++)for(let dc=-2;dc<=2;dc++)
+        M[r+dr][c+dc]=Math.max(Math.abs(dr),Math.abs(dc))!==1;
+    }
+    for(let i=8;i<N-8;i++){if(M[i][6]===null)M[i][6]=i%2===0;if(M[6][i]===null)M[6][i]=i%2===0;}
+    const fb=bch15(mask); /* EC level M = 00 */
+    for(let i=0;i<15;i++){
+      const mod=((fb>>i)&1)===1;
+      if(i<6)M[i][8]=mod;else if(i<8)M[i+1][8]=mod;else M[N-15+i][8]=mod;
+      if(i<8)M[8][N-i-1]=mod;else if(i<9)M[8][15-i]=mod;else M[8][14-i]=mod;
+    }
+    M[N-8][8]=true;
+    if(v>=7){const vb=bch18(v);
+      for(let i=0;i<18;i++){const mod=((vb>>i)&1)===1;
+        M[Math.floor(i/3)][i%3+N-11]=mod;M[i%3+N-11][Math.floor(i/3)]=mod;}}
+    const mf=MASKS[mask];
+    let inc=-1,row=N-1,bitIdx=7,byteIdx=0;
+    for(let col=N-1;col>0;col-=2){
+      if(col===6)col--;
+      for(;;){
+        for(let c=0;c<2;c++){
+          if(M[row][col-c]===null){
+            let dark=false;
+            if(byteIdx<cw.length)dark=((cw[byteIdx]>>>bitIdx)&1)===1;
+            if(mf(row,col-c))dark=!dark;
+            M[row][col-c]=dark;
+            if(--bitIdx===-1){byteIdx++;bitIdx=7;}
+          }
+        }
+        row+=inc;
+        if(row<0||row>=N){row-=inc;inc=-inc;break;}
+      }
+    }
+    return M;
+  }
+  function penalty(M){
+    const N=M.length;let p=0;
+    for(let r=0;r<N;r++){let run=1;for(let c=1;c<N;c++){if(M[r][c]===M[r][c-1])run++;else{if(run>=5)p+=run-2;run=1;}}if(run>=5)p+=run-2;}
+    for(let c=0;c<N;c++){let run=1;for(let r=1;r<N;r++){if(M[r][c]===M[r-1][c])run++;else{if(run>=5)p+=run-2;run=1;}}if(run>=5)p+=run-2;}
+    for(let r=0;r<N-1;r++)for(let c=0;c<N-1;c++){const v=M[r][c];if(v===M[r][c+1]&&v===M[r+1][c]&&v===M[r+1][c+1])p+=3;}
+    const pat=[1,0,1,1,1,0,1];
+    const scan=get=>{for(let a=0;a<N;a++)for(let b=0;b+6<N;b++){
+      let ok=true;for(let k=0;k<7;k++)if(!!get(a,b+k)!==!!pat[k]){ok=false;break;}
+      if(!ok)continue;
+      const lb=b>=4&&[1,2,3,4].every(k=>!get(a,b-k));
+      const la=b+10<N&&[7,8,9,10].every(k=>!get(a,b+k));
+      if(lb||la)p+=40;
+    }};
+    scan((a,b)=>M[a][b]);scan((a,b)=>M[b][a]);
+    let dark=0;for(const row of M)for(const m of row)if(m)dark++;
+    p+=Math.floor(Math.abs(dark*100/(N*N)-50)/5)*10;
+    return p;
+  }
+  function encode(text){
+    const bytes=Array.from(new TextEncoder().encode(text));
+    const v=chooseVersion(bytes.length);
+    if(!v)return null;
+    const cw=buildCodewords(bytes,v);
+    let best=null,bestP=Infinity;
+    for(let m=0;m<8;m++){const M=makeMatrix(v,cw,m);const pp=penalty(M);if(pp<bestP){bestP=pp;best=M;}}
+    return best;
+  }
+  function svg(text,opts){
+    opts=opts||{};
+    const M=encode(text);
+    if(!M)return '<p role="img">QR unavailable — URL too long (over ~200 characters).</p>';
+    const N=M.length,Q=4,T=N+2*Q;
+    let d='';
+    for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(M[r][c])d+='M'+(c+Q)+' '+(r+Q)+'h1v1h-1z';
+    return '<svg viewBox="0 0 '+T+' '+T+'" role="img" aria-label="'+(opts.label||'QR code')+'" shape-rendering="crispEdges" style="display:block;width:100%;height:auto"><rect width="'+T+'" height="'+T+'" fill="#FFFFFF"/><path d="'+d+'" fill="'+(opts.dark||'#1A1A1E')+'"/></svg>';
+  }
+  return {encode,svg};
+})();
+
+/* ===================================================================== */
+const D=window.PIONEER_DATA;
+if(!D){
+  document.querySelector('main').innerHTML='<h1>Data file not found</h1><p>This mock loads shared data from <code>../workbench-data/pioneer-data.js</code>. Keep the <strong>explorer</strong> and <strong>workbench-data</strong> folders side by side (serve or open the whole <strong>patroniq-v2</strong> folder).</p>';
+  throw new Error('PIONEER_DATA missing');
+}
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const KIOSK=new URLSearchParams(location.search).get('kiosk')==='1';
+if(KIOSK)document.body.classList.add('kiosk');
+const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- inline line icons (24px grid / 1.75 stroke — no emoji) ---------- */
+const IC={
+  monitor:'<rect x="3" y="4" width="18" height="12.5" rx="1.5"/><path d="M9 20.5h6M12 16.5v4"/>',
+  printer:'<path d="M6.5 9V3.5h11V9"/><path d="M6.5 17.5h-2A1.5 1.5 0 0 1 3 16v-5.5A1.5 1.5 0 0 1 4.5 9h15A1.5 1.5 0 0 1 21 10.5V16a1.5 1.5 0 0 1-1.5 1.5h-2"/><rect x="6.5" y="14" width="11" height="6.5" rx="1"/>',
+  door:'<path d="M4 21h16"/><path d="M6 21V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21"/><path d="M14.5 12h.01"/>',
+  book:'<path d="M12 6.5C10.5 4.8 8.4 4 5.5 4H3v14.5h3c2.6 0 4.6.8 6 2.5 1.4-1.7 3.4-2.5 6-2.5h3V4h-2.5c-2.9 0-5 .8-6.5 2.5Z"/><path d="M12 6.5V21"/>',
+  card:'<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/>',
+  pin:'<path d="M12 21s-6.5-5.3-6.5-10a6.5 6.5 0 0 1 13 0c0 4.7-6.5 10-6.5 10Z"/><circle cx="12" cy="10.5" r="2.5"/>',
+  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  check:'<path d="M4.5 12.5l5 5L19.5 7"/>',
+  bell:'<path d="M6 9.5a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10.5 20a1.7 1.7 0 0 0 3 0"/>',
+  layers:'<path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 12.5l9 5 9-5"/><path d="M3 17l9 5 9-5"/>',
+  send:'<path d="M21 3.5 3.5 10.5l7 2.5 2.5 7L21 3.5Z"/><path d="M10.5 13 21 3.5"/>',
+  user:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.2 3.8-4.8 7-4.8s5.8 1.6 7 4.8"/>',
+  cal:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/>',
+  renew:'<path d="M20 5v5h-5"/><path d="M4 19v-5h5"/><path d="M20 10a8 8 0 0 0-14.6-3.2M4 14a8 8 0 0 0 14.6 3.2"/>',
+  info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 7.5h.01"/>',
+  qr:'<rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14.5h2.75v2.75H14zM20.25 14.5v.01M14 20.25h.01M17.75 17.75h2.75v2.75h-2.75z"/>',
+  phone:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+  help:'<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.2a2.5 2.5 0 0 1 4.9.8c0 1.6-2.5 2-2.5 3.4"/><path d="M12 17h.01"/>',
+  wallet:'<path d="M18.5 7.5H5A1.5 1.5 0 0 1 5 4.5h12"/><path d="M3.5 6v12A2.5 2.5 0 0 0 6 20.5h14.5V7.5H17"/><path d="M16.5 14h.01"/>',
+  apple:'<path fill="currentColor" stroke="none" d="M15.9 12.7c0-2 1.65-3 1.72-3.06-.94-1.37-2.4-1.56-2.92-1.58-1.24-.13-2.42.73-3.05.73-.63 0-1.6-.71-2.63-.69-1.35.02-2.6.79-3.3 2-1.4 2.44-.36 6.05 1.01 8.03.67.97 1.47 2.06 2.52 2.02 1.01-.04 1.39-.65 2.61-.65 1.22 0 1.56.65 2.63.63 1.09-.02 1.78-.99 2.44-1.96.77-1.12 1.09-2.21 1.1-2.27-.02-.01-2.11-.81-2.13-3.2z"/><path fill="currentColor" stroke="none" d="M14.1 6.7c.56-.68.94-1.62.83-2.56-.8.03-1.78.54-2.36 1.21-.52.6-.97 1.56-.85 2.48.9.07 1.82-.45 2.38-1.13z"/>'
+};
+const ic=(n,style)=>'<svg class="ic"'+(style?' style="'+style+'"':'')+' viewBox="0 0 24 24" aria-hidden="true">'+IC[n]+'</svg>';
+
+/* ---------- state ---------- */
+const state={
+  view:'home',
+  thread:[],          // rendered conversation items
+  messages:[],        // Claude-format history (live mode)
+  pending:null,       // pending confirm {type:'room'|'event',...} for mock router
+  patron:null,        // logged-in patron (session clone)
+  regs:{},            // eventId -> confirmation code
+  bookings:{},        // roomId -> {slot, code}
+  demo:localStorage.getItem('piq_demo')==='1',
+  live:localStorage.getItem('piq_mode')==='live',
+  apiKey:'',          // session only, never persisted
+  model:localStorage.getItem('piq_model')||'claude-haiku-4-5-20251001',
+  lastInteraction:null,
+  notes:JSON.parse(localStorage.getItem('piq_notes')||'[]')
+};
+const code=()=>{const A='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<6;i++)s+=A[Math.floor(Math.random()*A.length)];return 'PLS-'+s;};
+const announce=t=>{$('#announcer').textContent=t;};
+const money=n=>'$'+n.toFixed(2);
+function appUrl(){
+  const saved=(localStorage.getItem('piq_baseurl')||'').trim();
+  return saved||location.href.replace(/[?#].*$/,'');
+}
+function kioskUrl(){const b=location.href.replace(/[?#].*$/,'');return b+'?kiosk=1';}
+
+/* ---------- level beneath (R9) ---------- */
+const KIND2MODULE={room_booking:'rooms',program_registration:'rooms',print:'print',payment:'payments',
+  holds_pickup:'circulation',self_check:'circulation',pc_reservation:'pcres',renew:'circulation'};
+function demoChip(keyOrKind){
+  if(!state.demo)return '';
+  const key=KIND2MODULE[keyOrKind]||keyOrKind;
+  const m=D.modules.enabled.find(x=>x.key===key);
+  if(!m)return '';
+  return '<details class="beneath"><summary>'+ic('layers')+'<span>'+esc(m.name)+' · '+esc(m.pid)+'</span></summary>'+
+    '<div class="bcalls">'+m.calls.map(c=>'<code>'+esc(c)+'</code>').join('')+'</div></details>';
+}
+
+/* ---------- generic mini floor map (decorative; directions carry the info) ---------- */
+function miniMap(label){
+  return '<svg class="minimap" viewBox="0 0 320 150" aria-hidden="true">'+
+    '<rect x="5" y="5" width="310" height="140" rx="10" fill="#FFFFFF" stroke="#E6E3EA"/>'+
+    '<rect x="24" y="24" width="70" height="16" rx="4" fill="#EDE7F3"/><rect x="24" y="48" width="70" height="16" rx="4" fill="#EDE7F3"/>'+
+    '<rect x="24" y="72" width="70" height="16" rx="4" fill="#EDE7F3"/>'+
+    '<rect x="120" y="96" width="80" height="28" rx="6" fill="#E7F2FA"/>'+
+    '<text x="160" y="114" font-size="11" text-anchor="middle" fill="#1E6093" font-family="inherit">Service desk</text>'+
+    '<path d="M160 138 V126 M160 96 C160 76 210 72 236 58" stroke="#1E6093" stroke-width="2" stroke-dasharray="5 4" fill="none"/>'+
+    '<text x="160" y="143" font-size="10" text-anchor="middle" fill="#515462" font-family="inherit">Entrance</text>'+
+    '<path d="M246 52c0-9-13-9-13 0 0 6.5 6.5 12 6.5 12s6.5-5.5 6.5-12z" fill="#67338E"/>'+
+    '<circle cx="239.5" cy="52" r="2.6" fill="#FFFFFF"/>'+
+    '<text x="239" y="34" font-size="11" font-weight="600" text-anchor="middle" fill="#46166B" font-family="inherit">'+esc(label)+'</text></svg>';
+}
+
+/* =====================================================================
+   Concierge — mock router (offline) + live Claude, ported & re-grounded
+   ===================================================================== */
+const PROMPT_HEADER='You are PatronIQ, the AI concierge for '+D.library.name+', running as a library-branded web app on the patron\'s phone (or an in-branch kiosk). You speak warmly and concisely.\n\n'+
+'DECISION POLICY\nFor every patron turn, call EXACTLY ONE of these tools. Prefer: clarify > transaction > wayfind > answer > escalate.\n\n'+
+'- clarify: (a) info-gathering when a detail is missing; (b) REQUIRED confirmation before committing room_booking or program_registration — name the specific room/program + slot/time and use the explicit verb (book / register), with suggested_replies like ["Yes, book it","No, change something"]. ONE question per turn. Also clarify format for famous multi-format titles before wayfinding.\n'+
+'- transaction: patron wants the library to DO something (book, reserve, print, register, self-check, pick up holds, reserve a PC, pay). The EnvisionWare modules are integrated — treat as completed and produce a confirmation grounded in the context, with a PLS-XXXXXX style confirmation code for bookings/registrations. Never escalate these.\n'+
+'- wayfind: patron wants directions; destination_id MUST match a WAYFINDING id.\n'+
+'- answer: answerable from the context — hours, branches, policies, services, events, resources, card policy. IMPORTANT: for any question about fines, answer that '+D.library.name+' is 100% fine-free — fees apply only to lost or damaged items, payable from the Account screen.\n'+
+'- escalate: ONLY for (a) safety/distress/accessibility/harassment, (b) explicit ask for a human, (c) genuinely outside the context. Never invent programs/rooms/services.\n\nLIBRARY CONTEXT\n';
+function renderContext(){
+  const o=[];
+  o.push('LIBRARY: '+D.library.name+' — "'+D.theme.tagline+'"');
+  o.push('HQ: '+D.library.hq+' · Serves '+D.library.counties.join(', ')+' counties ('+D.library.populationServed.toLocaleString()+' people)');
+  o.push('FINE POLICY: 100% fine-free — no overdue fines, ever. Fees only for lost/damaged items.');
+  o.push('CARD POLICY: '+D.library.cardPolicy);
+  o.push('TODAY at '+D.library.todayBranch+': '+(D.library.isOpenNow?'OPEN':'CLOSED')+' — '+D.library.todayHours);
+  o.push('\nBRANCHES');
+  D.branches.forEach(b=>o.push('- '+b.name+' ('+b.city+'): '+b.hours));
+  o.push('\nEVENTS TODAY');
+  D.events.forEach(e=>o.push('- ['+e.id+'] '+e.title+' — '+e.time+' at '+e.branch+', '+e.room+' ('+e.registration+(e.seatsLeft!=null?', '+e.seatsLeft+' seats left':'')+'). '+e.audience));
+  o.push('\nBOOKABLE ROOMS');
+  D.rooms.forEach(r=>o.push('- ['+r.id+'] '+r.name+' at '+r.branch+' (cap '+r.capacity+', '+r.equipment.join('/')+') — open slots today: '+r.slots.join(', ')));
+  o.push('\nSERVICES');
+  D.services.forEach(s=>o.push('- ['+s.id+'] '+s.name+': '+s.desc));
+  o.push('\nDIGITAL RESOURCES');
+  D.resources.forEach(r=>o.push('- '+r.name+': '+r.label));
+  o.push('\nWAYFINDING DESTINATIONS');
+  D.wayfinding.forEach(w=>o.push('- ['+w.id+'] '+w.label+': '+w.directions));
+  return o.join('\n');
+}
+const TOOL_SCHEMAS=[
+ {name:'clarify',description:'Ask ONE follow-up question. Use for info-gathering or as the REQUIRED confirmation before room_booking/program_registration.',input_schema:{type:'object',properties:{question:{type:'string'},suggested_replies:{type:'array',items:{type:'string'}}},required:['question','suggested_replies']}},
+ {name:'transaction',description:'Fulfil a self-service transaction via the EnvisionWare modules (treat as completed). For room_booking/program_registration you must have already confirmed via clarify.',input_schema:{type:'object',properties:{kind:{type:'string',enum:['room_booking','program_registration','print','payment','holds_pickup','self_check','pc_reservation']},params:{type:'object'},confirmation_message:{type:'string'}},required:['kind','confirmation_message']}},
+ {name:'wayfind',description:'Give directions. destination_id MUST match a WAYFINDING id.',input_schema:{type:'object',properties:{destination_id:{type:'string'},spoken_text:{type:'string'}},required:['destination_id','spoken_text']}},
+ {name:'answer',description:'Answer from the library context. HTML under 140 words, no bullets.',input_schema:{type:'object',properties:{response_html:{type:'string'},suggested_next:{type:'array',items:{type:'object',properties:{label:{type:'string'},action:{type:'string',enum:['open_screen']},screen:{type:'string',enum:['home','events','rooms','account']}},required:['label','action','screen']}}},required:['response_html']}},
+ {name:'escalate',description:'Create a staff alert. Only for safety/distress, explicit human request, or genuinely out-of-context.',input_schema:{type:'object',properties:{request_type:{type:'string',enum:['account','technology','language','accessibility','safety','other']},urgency:{type:'string',enum:['normal','urgent']},patron_quote:{type:'string'},wait_estimate_minutes:{type:'integer',minimum:1,maximum:15}},required:['request_type','urgency','patron_quote']}}
+];
+async function liveRouter(text){
+  if(!state.apiKey)throw new Error('Add an Anthropic API key in Settings (gear) to use Live mode.');
+  const t0=performance.now();
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'content-type':'application/json','x-api-key':state.apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:state.model,max_tokens:400,temperature:0.2,system:PROMPT_HEADER+renderContext(),tools:TOOL_SCHEMAS,tool_choice:{type:'any'},messages:state.messages})
+  });
+  if(!res.ok){const e=await res.text();throw new Error('Anthropic '+res.status+': '+e.slice(0,180));}
+  const data=await res.json();
+  const tu=(data.content||[]).find(b=>b.type==='tool_use');
+  const dbg={mode:'live',model:data.model,latencyMs:Math.round(performance.now()-t0)};
+  if(!tu)return{route:'escalate',payload:{request_type:'other',urgency:'normal',patron_quote:text,wait_estimate_minutes:3},debug:dbg};
+  return{route:tu.name,payload:tu.input,debug:{...dbg,tool:tu.name}};
+}
+function mockRouter(text){
+  const q=text.toLowerCase(),dbg={mode:'mock'};
+  /* pending confirmation follow-through */
+  if(state.pending){
+    const p=state.pending;
+    if(/\b(yes|yep|sure|confirm|do it|book it|sign me up|register)\b/.test(q)){
+      state.pending=null;
+      if(p.type==='room')return{route:'transaction',payload:{kind:'room_booking',params:{room:p.room,branch:p.branch,time:p.time},
+        confirmation_message:'Done — '+p.room+' at '+p.branch+' is booked for '+p.time+' today. Confirmation '+code()+'. Show it at the service desk if asked.'},debug:dbg};
+      return{route:'transaction',payload:{kind:'program_registration',params:{event:p.title},
+        confirmation_message:'You’re registered for '+p.title+' — '+p.time+' at '+p.branch+'. Confirmation '+code()+'.'},debug:dbg};
+    }
+    if(/\b(no|change|different|cancel|never mind)\b/.test(q)){
+      state.pending=null;
+      return{route:'clarify',payload:{question:'No problem — what would you like instead?',suggested_replies:['Show all rooms','Show all events','Never mind']},debug:dbg};
+    }
+    state.pending=null;
+  }
+  if(/\bnever mind|nothing,? thanks|no thanks\b/.test(q))
+    return{route:'answer',payload:{response_html:'<p>No problem — I’m here whenever you need something.</p>'},debug:dbg};
+  /* safety */
+  if(/\b(unsafe|emergency|hurt|threat|scared|harass|help me now)\b/.test(q))
+    return{route:'escalate',payload:{request_type:'safety',urgency:'urgent',patron_quote:text,wait_estimate_minutes:1},debug:dbg};
+  /* explicit human */
+  if(/\b(talk to|speak to|see a) (a )?(librarian|person|human|someone)|real person|staff member\b/.test(q))
+    return{route:'escalate',payload:{request_type:'other',urgency:'normal',patron_quote:text,wait_estimate_minutes:3},debug:dbg};
+  /* famous multi-format titles -> clarify format */
+  const titles=['lord of the rings','harry potter','dune','fourth wing','game of thrones','the hobbit','pride and prejudice','hamilton'];
+  if(titles.some(t=>q.includes(t))&&!/\b(book|audiobook|dvd|movie|ebook|e-book)\b/.test(q))
+    return{route:'clarify',payload:{question:'Are you looking for the book, the audiobook, the DVD, or the eBook?',suggested_replies:['Book','Audiobook','DVD','eBook']},debug:dbg};
+  /* fines / fees — Pioneer is fine-free */
+  if(/\b(fine|fines|late fee|overdue)\b/.test(q))
+    return{route:'answer',payload:{response_html:'<p>Good news — <strong>Pioneer is 100% fine-free</strong>. There are no overdue fines, ever. Fees apply only for <strong>lost or damaged items</strong>, and you can check and pay those right from your account.</p>',
+      suggested_next:[{label:'Open my account',action:'open_screen',screen:'account'}]},debug:dbg};
+  if(/\b(pay|fee|fees|owe)\b/.test(q))
+    return{route:'answer',payload:{response_html:'<p>Any lost or damaged-item fees can be paid from your account — card, Google Pay, Apple Pay, or Cash App Pay. Remember: Pioneer never charges overdue fines.</p>',
+      suggested_next:[{label:'Open my account',action:'open_screen',screen:'account'}]},debug:dbg};
+  /* transactions */
+  if(/\bprint|printing|copies|copy|resume\b/.test(q))
+    return{route:'transaction',payload:{kind:'print',params:{station:'next to the public computers'},
+      confirmation_message:'You’re set to print — B&W $0.10/page, color $0.50/page. Send your document from your phone or any library PC, then release it at the print station next to the public computers, left of the service desk.'},debug:dbg};
+  if(/\b(computer|pc|desktop)\b/.test(q))
+    return{route:'transaction',payload:{kind:'pc_reservation',params:{branch:D.library.todayBranch,station:'PC 7'},
+      confirmation_message:'PC 7 at '+D.library.todayBranch+' is held for you for the next 15 minutes — sign in with your library card at the station.'},debug:dbg};
+  if(/where.*hold|hold.*where/.test(q))
+    return{route:'wayfind',payload:{destination_id:'holds',spoken_text:'Pick up my holds'},debug:dbg};
+  if(/\bhold(s)?\b/.test(q))
+    return{route:'transaction',payload:{kind:'holds_pickup',
+      confirmation_message:'Your holds are waiting on the holds shelves just past the entrance on the right — look for your name, then finish at self-check. You can also collect holds at a 24-Hour Library kiosk.'},debug:dbg};
+  if(/self.?check|check (this |these |it |them )?out/.test(q))
+    return{route:'transaction',payload:{kind:'self_check',
+      confirmation_message:'Use any self-check station near the entrance — scan your card, then your items. Books check out for 21 days; DVDs and magazines for 7.'},debug:dbg};
+  /* room booking -> clarify confirm first */
+  if(/(book|reserve|get).*(room|study|space)|study room|meeting room/.test(q)){
+    const r=D.rooms[0];
+    state.pending={type:'room',room:r.name,branch:r.branch,time:r.slots[0]};
+    return{route:'clarify',payload:{question:'I can book '+r.name+' at '+r.branch+' (seats '+r.capacity+', '+r.equipment.join(' + ')+') for the '+r.slots[0]+' slot today. Would you like me to book it now?',
+      suggested_replies:['Yes, book it','No, change something']},debug:dbg};
+  }
+  /* event registration -> clarify confirm for required, answer for drop-in */
+  const evtWords=[['yoga','yoga'],['glass|lantern','glass-lantern'],['solder','soldering'],['mahjong','mahjong'],
+    ['rhythm|babies','rhythm-babies'],['pj story|pajama','pj-storytime'],['storytime|story time|toddler','storytime-toddler'],['resume|job','resume-help']];
+  for(const[rx,id]of evtWords){
+    if(new RegExp(rx).test(q)){
+      const e=D.events.find(x=>x.id===id);
+      if(!e)break;
+      if(e.registration==='required'){
+        state.pending={type:'event',title:e.title,time:e.time,branch:e.branch};
+        return{route:'clarify',payload:{question:'I can register you for '+e.title+' — '+e.time+' at '+e.branch+', '+e.room+' ('+e.seatsLeft+' seats left). Would you like me to register you now?',
+          suggested_replies:['Yes, register me','No, change something']},debug:dbg};
+      }
+      return{route:'answer',payload:{response_html:'<p><strong>'+esc(e.title)+'</strong> is drop-in — no registration needed. Come along at <strong>'+esc(e.time)+'</strong> to '+esc(e.branch)+' ('+esc(e.room)+'). '+esc(e.audience)+'.</p>',
+        suggested_next:[{label:'See all events',action:'open_screen',screen:'events'}]},debug:dbg};
+    }
+  }
+  if(/(sign|register).*(class|event|program|workshop)|what('| i)s (happening|on)|events? today/.test(q)){
+    const three=D.events.slice(0,3).map(e=>'<strong>'+esc(e.title)+'</strong> ('+esc(e.time)+', '+esc(e.branch)+')').join('; ');
+    return{route:'answer',payload:{response_html:'<p>Today across our branches: '+three+' — and more. Registration is only needed where seats are limited.</p>',
+      suggested_next:[{label:'See all events',action:'open_screen',screen:'events'}]},debug:dbg};
+  }
+  /* card / account policy */
+  if(/\b(card|account)\b/.test(q)&&/\b(lost|get|new|sign up|replace|renew|expired)\b/.test(q))
+    return{route:'answer',payload:{response_html:'<p>A card is <strong>free</strong> for anyone who lives, works, studies, or owns property in Cleveland, McClain, or Pottawatomie county — sign up in person for full service or online for an instant Digital Access Card. You can have up to 100 items out: books 21 days, DVDs and magazines 7 days.</p>',
+      suggested_next:[{label:'Open my account',action:'open_screen',screen:'account'}]},debug:dbg};
+  /* hours / wifi */
+  if(/hour|open|close|when|tonight/.test(q))
+    return{route:'answer',payload:{response_html:'<p>'+esc(D.library.todayBranch)+' is <strong>'+(D.library.isOpenNow?'open':'closed')+'</strong> today — hours '+esc(D.library.todayHours)+'. Most large branches run M–Th 9–9; see any branch for its full schedule.</p>',
+      suggested_next:[{label:'Today’s events',action:'open_screen',screen:'events'}]},debug:dbg};
+  if(/wifi|wi-fi|internet/.test(q))
+    return{route:'answer',payload:{response_html:'<p>Free WiFi at every branch — join the <strong>Pioneer Library</strong> network, no password needed. Public computers are available at every branch too.</p>'},debug:dbg};
+  /* digital resources */
+  if(/ebook|e-book|audiobook|libby|hoopla|stream|tutor|ancestry|diploma/.test(q))
+    return{route:'answer',payload:{response_html:'<p>Borrow eBooks and eAudio with <strong>Libby</strong>, stream movies, music and comics on <strong>Hoopla</strong> (no waitlists), get free live tutoring on <strong>Brainfuse HelpNow</strong>, or research family history with <strong>Ancestry</strong> in-library — all free with your card.</p>'},debug:dbg};
+  /* wayfinding */
+  const hit=D.wayfinding.find(w=>q.includes(w.id)||q.split(/\W+/).some(word=>word.length>3&&w.label.toLowerCase().includes(word)));
+  const kid=/\bkids?|child|children|toddler\b/.test(q)&&D.wayfinding.find(w=>/child/.test(w.id));
+  const dest=hit||kid;
+  if(dest&&/where|find|directions|located|get to|area|section|room|desk|restroom|bathroom|shelf|shelves|studio/.test(q))
+    return{route:'wayfind',payload:{destination_id:dest.id,spoken_text:dest.label},debug:dbg};
+  /* fallback */
+  return{route:'escalate',payload:{request_type:'other',urgency:'normal',patron_quote:text,wait_estimate_minutes:3},debug:{...dbg,fellThrough:true}};
+}
+
+/* ---------- conversation thread ---------- */
+async function submit(text){
+  text=(text||'').trim();
+  if(!text)return;
+  if(state.view!=='concierge')nav('concierge');
+  state.thread.push({who:'patron',text});
+  state.messages.push({role:'user',content:text});
+  state.thread.push({who:'thinking'});
+  paintThread();
+  let result;
+  try{ result=state.live?await liveRouter(text):mockRouter(text); }
+  catch(err){ result={route:'escalate',payload:{request_type:'other',urgency:'normal',patron_quote:text,wait_estimate_minutes:3},debug:{error:String(err&&err.message||err)}}; }
+  state.thread.pop(); // remove thinking
+  state.thread.push({who:'ai',result});
+  state.messages.push({role:'assistant',content:JSON.stringify({route:result.route,...result.payload})});
+  state.lastInteraction={utterance:text,route:result.route,payload:result.payload};
+  paintThread();
+  announce('Concierge replied: '+result.route);
+}
+function routeHtml(r){
+  const p=r.payload||{};
+  let inner='';
+  if(r.route==='clarify'){
+    inner='<div class="aiLead">'+esc(p.question)+'</div>'+
+      '<div class="chips">'+(p.suggested_replies||[]).map(s=>'<button class="chip" data-say="'+esc(s)+'">'+esc(s)+'</button>').join('')+'</div>';
+  }else if(r.route==='transaction'){
+    inner='<div class="aiBody"><p>'+esc(p.confirmation_message)+'</p></div>'+demoChip(p.kind||'');
+  }else if(r.route==='wayfind'){
+    const w=D.wayfinding.find(x=>x.id===p.destination_id);
+    inner='<div class="aiLead">'+esc(p.spoken_text||(w?w.label:'Directions'))+'</div>'+
+      (w?'<div class="directions">'+esc(w.directions)+'</div>':'')+
+      miniMap(w?w.label:'Destination');
+  }else if(r.route==='answer'){
+    inner='<div class="aiBody">'+(p.response_html||'')+'</div>'+
+      ((p.suggested_next||[]).length?'<div class="chips">'+p.suggested_next.map(n=>'<button class="chip" data-screen="'+esc(n.screen)+'">'+esc(n.label)+'</button>').join('')+'</div>':'');
+  }else if(r.route==='escalate'){
+    inner='<div class="escalateBanner">'+ic('bell','width:30px;height:30px;color:#B91C1C')+
+      '<div class="big">Help is on the way</div>'+
+      '<p class="muted" style="margin:4px 0 0">A staff member has been notified'+(p.request_type?' ('+esc(p.request_type)+')':'')+'.</p>'+
+      '<span class="waitPill">Estimated wait: '+(p.wait_estimate_minutes||3)+' min</span></div>';
+  }
+  return '<div class="aiCard"><span class="routeTag rt-'+esc(r.route)+'">'+esc(r.route)+'</span>'+inner+'</div>';
+}
+function paintThread(){
+  if(state.view!=='concierge')return;
+  const t=$('#thread');
+  if(!t)return;
+  t.innerHTML=state.thread.map(item=>{
+    if(item.who==='patron')return '<div class="bubble">'+esc(item.text)+'</div>';
+    if(item.who==='thinking')return '<div class="aiCard"><span class="thinking"><span class="spin" aria-hidden="true"></span>Thinking…</span></div>';
+    return routeHtml(item.result);
+  }).join('');
+  t.querySelectorAll('[data-say]').forEach(b=>b.onclick=()=>submit(b.dataset.say));
+  t.querySelectorAll('[data-screen]').forEach(b=>b.onclick=()=>nav(b.dataset.screen));
+  $('#main').scrollTop=$('#main').scrollHeight;
+}
+
+/* =====================================================================
+   Views
+   ===================================================================== */
+const QUICK=['Where do I pick up holds?','Book a study room','Sign me up for yoga tonight','Do I owe any fines?','Is there storytime today?','I need to print my resume'];
+const MODULE_TILES={
+  pcres:{icon:'monitor',t:'Use a computer',d:'Reserve a session at any branch',go:()=>submit('Reserve a computer for me')},
+  print:{icon:'printer',t:'Print & copy',d:'From your phone — B&W $0.10, color $0.50',go:()=>submit('I need to print')},
+  rooms:{icon:'door',t:'Reserve a room',d:'Study rooms to community rooms',go:()=>nav('rooms')},
+  circulation:{icon:'book',t:'Checkouts & holds',d:'Your items, renewals, hold pickup',go:()=>nav('account')},
+  payments:{icon:'card',t:'Pay a fee',d:'Card, Google Pay, Apple Pay, Cash App',go:()=>nav('account')}
+};
+function greeting(){const h=new Date().getHours();return h<12?'Good morning':h<18?'Good afternoon':'Good evening';}
+
+function viewHome(){
+  const kioskHero=KIOSK?(
+    '<section class="kioskHero"><div>'+
+      '<h1>Put the library in your pocket</h1>'+
+      '<p>Scan the code with your phone camera to open PatronIQ — no app store, no install, no sign-up.</p>'+
+      '<ol><li>Open your phone camera</li><li>Point it at the code</li><li>Tap the link that appears</li></ol></div>'+
+      '<div class="qrPanel">'+QR.svg(appUrl(),{label:'Scan to open PatronIQ on your phone'})+
+      '<div class="cap">'+ic('phone','width:18px;height:18px;vertical-align:-3px')+' Scan to open on your phone</div>'+
+      '<div class="capsub">'+esc(appUrl())+'</div></div></section>'):'';
+  const h1=KIOSK?'<h2 style="margin-top:0">'+greeting()+' — how can we help?</h2>'
+               :'<h1>'+greeting()+'.</h1><p class="sub">Welcome to '+esc(D.library.name)+' — '+esc(D.theme.tagline.toLowerCase())+'</p>';
+  const tiles=D.modules.enabled.map(m=>{
+    const t=MODULE_TILES[m.key];
+    if(!t)return '';
+    return '<button class="tile" data-tile="'+esc(m.key)+'">'+ic(t.icon)+'<span class="tt">'+esc(t.t)+'</span><span class="td">'+esc(t.d)+'</span></button>';
+  }).join('');
+  const evPrev=D.events.slice(0,3).map(e=>
+    '<div class="rowline"><div><div class="t">'+esc(e.title)+'</div><div class="d">'+esc(e.time)+' · '+esc(e.branch)+(e.registration==='required'?' · registration required':'')+'</div></div>'+
+    '<span class="badge '+(e.registration==='required'?'b-warn':'b-ok')+'">'+(e.registration==='required'?(e.seatsLeft+' seats'):'Drop-in')+'</span></div>').join('');
+  $('#main').innerHTML=kioskHero+h1+
+    '<form class="askForm" id="askForm"><label class="sr-only" for="askIn">Ask the library anything</label>'+
+    '<input id="askIn" placeholder="Ask the library anything…" autocomplete="off">'+
+    '<button class="btn" type="submit" aria-label="Ask">'+ic('send')+'</button></form>'+
+    '<div class="chips">'+QUICK.map(q=>'<button class="chip" data-say="'+esc(q)+'">'+esc(q)+'</button>').join('')+'</div>'+
+    '<h2>Services</h2><div class="tiles">'+tiles+'</div>'+
+    '<h2>Today at your library</h2><div class="card eventPrev">'+evPrev+
+    '<button class="linkish" data-go="events">See all events</button></div>';
+  $('#askForm').onsubmit=e=>{e.preventDefault();const v=$('#askIn').value;if(v.trim())submit(v);};
+  document.querySelectorAll('[data-say]').forEach(b=>b.onclick=()=>submit(b.dataset.say));
+  document.querySelectorAll('[data-tile]').forEach(b=>b.onclick=()=>MODULE_TILES[b.dataset.tile].go());
+  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>nav(b.dataset.go));
+}
+
+function viewConcierge(){
+  $('#main').innerHTML='<h1>Ask the library</h1>'+
+    '<p class="sub">I can answer questions, give directions, and actually do things — book rooms, register you, start prints.</p>'+
+    '<div class="thread" id="thread" aria-live="polite"></div>'+
+    (state.thread.length?'':'<div class="chips">'+QUICK.map(q=>'<button class="chip" data-say="'+esc(q)+'">'+esc(q)+'</button>').join('')+'</div>')+
+    '<div class="composer"><form class="askForm" id="askForm" style="margin-top:0"><label class="sr-only" for="askIn">Message the concierge</label>'+
+    '<input id="askIn" placeholder="Type a question…" autocomplete="off">'+
+    '<button class="btn" type="submit" aria-label="Send">'+ic('send')+'</button></form></div>';
+  $('#askForm').onsubmit=e=>{e.preventDefault();const v=$('#askIn').value;$('#askIn').value='';if(v.trim())submit(v);};
+  document.querySelectorAll('[data-say]').forEach(b=>b.onclick=()=>submit(b.dataset.say));
+  paintThread();
+}
+
+/* ---------- account (R3) ---------- */
+function dueBadge(due){
+  if(/OVERDUE/i.test(due))return '<span class="badge b-danger">'+esc(due)+'</span>';
+  const m=due.match(/in (\d+)/);
+  if(m&&+m[1]<=6)return '<span class="badge b-warn">Due '+esc(due)+'</span>';
+  return '<span class="badge b-ok">Due '+esc(due)+'</span>';
+}
+function viewAccount(){
+  const P=state.patron;
+  if(!P){
+    $('#main').innerHTML='<h1>My account</h1>'+
+      '<p class="sub">Sign in with your library card to see checkouts, holds, and fees.</p>'+
+      '<div class="card"><form id="loginForm">'+
+      '<div class="field"><label for="cardNum">Library card number</label><input id="cardNum" inputmode="numeric" autocomplete="off"></div>'+
+      '<div class="field"><label for="pinNum">PIN</label><input id="pinNum" type="password" autocomplete="off" aria-describedby="loginErr"></div>'+
+      '<div class="formErr" id="loginErr" role="alert"></div>'+
+      '<button class="btn" type="submit" style="width:100%;margin-top:16px">Sign in</button></form>'+
+      '<div class="chips">'+D.patrons.map((p,i)=>'<button class="chip" type="button" data-hint="'+i+'">Demo: '+esc(p.name)+(p.checkouts.length?'':' (new card)')+'</button>').join('')+'</div>'+
+      '<p class="hint">Demo cards fill the form — this mock talks to a simulated ILS via SIP2.</p></div>'+
+      '<h2>Good to know</h2>'+guides();
+    document.querySelectorAll('[data-hint]').forEach(b=>b.onclick=()=>{
+      const p=D.patrons[+b.dataset.hint];$('#cardNum').value=p.id;$('#pinNum').value=p.pin;$('#pinNum').focus();});
+    $('#loginForm').onsubmit=e=>{
+      e.preventDefault();
+      const p=D.patrons.find(x=>x.id===$('#cardNum').value.trim()&&x.pin===$('#pinNum').value.trim());
+      if(!p){$('#loginErr').textContent='We couldn’t match that card and PIN — try one of the demo cards below.';return;}
+      state.patron=JSON.parse(JSON.stringify(p));
+      announce('Signed in as '+p.name);
+      viewAccount();
+    };
+    return;
+  }
+  const feesDue=P.fees.reduce((s,f)=>s+f.amount,0);
+  const co=P.checkouts.length?P.checkouts.map((c,i)=>{
+    let right;
+    if(c.renewed)right='<span class="badge b-ok">Renewed — due in 21 days</span>';
+    else if(c.renewable)right='<button class="btn sm ghost" data-renew="'+i+'">'+ic('renew','width:17px;height:17px')+'Renew</button>';
+    else right='<span class="badge b-neutral">Not renewable</span>';
+    return '<div class="rowline"><div><div class="t">'+esc(c.title)+'</div><div class="d">'+(c.renewed?'':'')+'</div>'+dueBadge(c.due)+'</div><div>'+right+'</div></div>';
+  }).join(''):'<p class="muted">Nothing checked out yet — a whole library is waiting for you.</p>';
+  const ho=P.holds.length?P.holds.map(h=>{
+    const ready=/ready/i.test(h.status);
+    return '<div class="rowline"><div><div class="t">'+esc(h.title)+'</div><div class="d">'+esc(h.location||'')+'</div>'+
+      '<span class="badge '+(ready?'b-ok':'b-blue')+'">'+esc(h.status)+'</span></div>'+
+      (ready?'<button class="btn sm ghost" data-wayfindholds>'+ic('pin','width:17px;height:17px')+'Wayfind to pickup</button>':'')+'</div>';
+  }).join(''):'<p class="muted">No holds right now.</p>';
+  let feesHtml;
+  if(P.paidReceipt){
+    feesHtml='<div class="confirmNote">'+ic('check')+'<span>Paid '+money(P.paidReceipt.total)+' by '+esc(P.paidReceipt.method)+' — receipt <strong>'+esc(P.paidReceipt.ref)+'</strong></span></div>'+demoChip('payments');
+  }else if(P.fees.length){
+    feesHtml=P.fees.map(f=>'<div class="rowline"><div><div class="t">'+esc(f.desc)+'</div></div><div class="t">'+money(f.amount)+'</div></div>').join('')+
+      '<div class="feeTotal"><span>Total due</span><span>'+money(feesDue)+'</span></div>'+
+      '<button class="btn" id="payBtn" style="width:100%;margin-top:12px">'+ic('card','width:20px;height:20px')+'Pay '+money(feesDue)+'</button>'+
+      '<p class="hint">'+esc(P.feesNote||'Pioneer is fine-free — fees apply only to lost/damaged items.')+'</p>';
+  }else{
+    feesHtml='<p class="muted">No fees — and Pioneer never charges overdue fines.</p>';
+  }
+  $('#main').innerHTML='<h1>Hi, '+esc(P.name.split(' ')[0])+'</h1>'+
+    '<p class="sub">'+esc(P.branch)+' is your home branch · card ••••'+esc(P.id.slice(-4))+'</p>'+
+    '<h2>Checked out <span class="badge b-neutral">'+P.checkouts.length+'</span></h2><div class="card">'+co+demoChip('circulation')+'</div>'+
+    '<h2>Holds <span class="badge b-neutral">'+P.holds.length+'</span></h2><div class="card">'+ho+'</div>'+
+    '<h2>Fees</h2><div class="card">'+feesHtml+'</div>'+
+    '<h2>Good to know</h2>'+guides()+
+    '<button class="btn quiet" id="signOut" style="width:100%;margin-top:20px">Sign out</button>';
+  document.querySelectorAll('[data-renew]').forEach(b=>b.onclick=()=>{
+    const c=state.patron.checkouts[+b.dataset.renew];
+    c.renewed=true;c.due='in 21 days';c.renewable=false;
+    announce(c.title+' renewed — now due in 21 days');
+    viewAccount();
+  });
+  const wf=document.querySelector('[data-wayfindholds]');
+  if(wf)wf.onclick=()=>{nav('concierge');submit('Where do I pick up my holds?');};
+  const pb=$('#payBtn');
+  if(pb)pb.onclick=()=>openPaymentSheet({
+    title:'Pay library fees',
+    lineItems:P.fees.map(f=>({label:f.desc,amount:f.amount})),
+    total:feesDue,
+    onSuccess:r=>{state.patron.paidReceipt=r;viewAccount();}
+  });
+  $('#signOut').onclick=()=>{state.patron=null;announce('Signed out');viewAccount();};
+}
+function guides(){
+  const g=[
+    ['renew','Return items at any branch or 24-Hour Library kiosk — no overdue fines, ever.'],
+    ['pin','Holds pickup: shelves just past the entrance on the right — then finish at self-check.'],
+    ['book','Check out up to 100 items: books for 21 days, DVDs and magazines for 7.']
+  ];
+  return g.map(([i,t])=>'<div class="guide">'+ic(i)+'<span>'+esc(t)+'</span></div>').join('');
+}
+
+/* ---------- events (R5/R13 surface) ---------- */
+function viewEvents(){
+  const cards=D.events.map(e=>{
+    const reg=state.regs[e.id];
+    let action='';
+    if(reg){
+      action='<div class="confirmNote">'+ic('check')+'<span>Registered — confirmation <strong>'+esc(reg)+'</strong></span></div>'+demoChip('rooms');
+    }else if(e.registration==='required'){
+      const left=e.seatsLeft-(state.regs[e.id]?1:0);
+      action=left>0
+        ?'<div style="display:flex;align-items:center;gap:10px;margin-top:12px"><button class="btn sm" data-reg="'+esc(e.id)+'">Register</button><span class="badge b-warn">'+left+' seats left</span></div>'
+        :'<div style="margin-top:12px"><span class="badge b-danger">Full — waitlist at the desk</span></div>';
+    }else{
+      action='<div style="margin-top:12px"><span class="badge b-ok">Drop-in — no registration needed</span></div>';
+    }
+    return '<article class="card"><span class="seriesChip">'+esc(e.series)+'</span>'+
+      '<h3>'+esc(e.title)+'</h3>'+
+      '<div class="meta">'+esc(e.time)+' · '+esc(e.branch)+' · '+esc(e.room)+'</div>'+
+      '<div class="meta">'+esc(e.audience)+'</div>'+action+'</article>';
+  }).join('');
+  $('#main').innerHTML='<h1>Attend something</h1><p class="sub">Today across '+D.branches.length+' branches. Registration only where seats are limited.</p>'+cards;
+  document.querySelectorAll('[data-reg]').forEach(b=>b.onclick=()=>{
+    const e=D.events.find(x=>x.id===b.dataset.reg);
+    confirmDialog({
+      title:'Register for this event?',
+      body:'<p><strong>'+esc(e.title)+'</strong><br>'+esc(e.time)+' · '+esc(e.branch)+' · '+esc(e.room)+'<br><span class="muted">'+esc(e.audience)+' · '+e.seatsLeft+' seats left</span></p>',
+      verb:'Yes, register me',
+      onConfirm:()=>{
+        state.regs[e.id]=code();
+        e.seatsLeft=Math.max(0,e.seatsLeft-1);
+        announce('Registered for '+e.title+'. Confirmation '+state.regs[e.id]);
+        viewEvents();
+      }
+    });
+  });
+}
+
+/* ---------- rooms (R5, P02) ---------- */
+function viewRooms(){
+  const cards=D.rooms.map(r=>{
+    const mine=state.bookings[r.id];
+    const slots=r.slots.concat(r.booked).sort().map(s=>{
+      if(mine&&mine.slot===s)return '<span class="slot mine">'+esc(s)+'</span>';
+      if(r.booked.includes(s))return '<button class="slot taken" disabled aria-label="'+esc(s)+' unavailable">'+esc(s)+'</button>';
+      return '<button class="slot" data-room="'+esc(r.id)+'" data-slot="'+esc(s)+'">'+esc(s)+'</button>';
+    }).join('');
+    return '<article class="card"><h3>'+esc(r.name)+'</h3>'+
+      '<div class="meta">'+esc(r.branch)+' · seats '+r.capacity+'</div>'+
+      '<div class="equip">'+r.equipment.map(e=>'<span>'+esc(e)+'</span>').join('')+'</div>'+
+      '<div class="slotRow">'+slots+'</div>'+
+      (mine?'<div class="confirmNote">'+ic('check')+'<span>Booked for <strong>'+esc(mine.slot)+'</strong> today — confirmation <strong>'+esc(mine.code)+'</strong></span></div>'+demoChip('rooms'):'')+
+      '</article>';
+  }).join('');
+  $('#main').innerHTML='<h1>Reserve a room</h1><p class="sub">Pick an open time — booking takes one tap and your card.</p>'+cards;
+  document.querySelectorAll('.slot[data-room]').forEach(b=>b.onclick=()=>{
+    const r=D.rooms.find(x=>x.id===b.dataset.room),slot=b.dataset.slot;
+    confirmDialog({
+      title:'Book this room?',
+      body:'<p><strong>'+esc(r.name)+'</strong> at '+esc(r.branch)+'<br>Today at <strong>'+esc(slot)+'</strong> · seats '+r.capacity+'<br><span class="muted">'+r.equipment.join(' · ')+'</span></p>',
+      verb:'Yes, book it',
+      onConfirm:()=>{
+        state.bookings[r.id]={slot,code:code()};
+        announce(r.name+' booked for '+slot+'. Confirmation '+state.bookings[r.id].code);
+        viewRooms();
+      }
+    });
+  });
+}
+
+/* =====================================================================
+   Dialog plumbing (focus-trapped)
+   ===================================================================== */
+function trapFocus(container,e){
+  if(e.key!=='Tab')return;
+  const f=[...container.querySelectorAll('button,[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')].filter(el=>!el.disabled&&el.offsetParent!==null);
+  if(!f.length)return;
+  const first=f[0],last=f[f.length-1];
+  if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+  else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+}
+function openDialog(html,opts){
+  opts=opts||{};
+  const host=$('#dialogHost'),opener=document.activeElement;
+  host.innerHTML='<div class="scrim"></div><div class="dlg" role="dialog" aria-modal="true" aria-label="'+esc(opts.label||'Dialog')+'">'+html+'</div>';
+  const dlg=host.querySelector('.dlg');
+  let closed=false;
+  const key=e=>{
+    if(e.key==='Escape'){e.stopPropagation();close();}
+    else trapFocus(dlg,e);
+  };
+  document.addEventListener('keydown',key,true);
+  host.querySelector('.scrim').onclick=()=>close();
+  function close(){
+    if(closed)return;closed=true;
+    document.removeEventListener('keydown',key,true);
+    host.innerHTML='';
+    if(opener&&opener.focus)opener.focus();
+    if(opts.onClose)opts.onClose();
+  }
+  const f=dlg.querySelector('[autofocus]')||dlg.querySelector('input,button');
+  if(f)f.focus();
+  return {close,el:dlg};
+}
+function confirmDialog(o){
+  const d=openDialog(
+    '<h2 class="dlgTitle">'+esc(o.title)+'</h2><div>'+o.body+'</div>'+
+    '<div class="dlgActions"><button class="btn ghost" data-x>Cancel</button><button class="btn" data-go autofocus>'+esc(o.verb)+'</button></div>',
+    {label:o.title});
+  d.el.querySelector('[data-x]').onclick=()=>d.close();
+  d.el.querySelector('[data-go]').onclick=()=>{d.close();o.onConfirm();};
+}
+
+/* =====================================================================
+   Payment sheet (R4) — Adyen rail mock: card / Google Pay / Apple Pay / Cash App QR
+   ===================================================================== */
+function openPaymentSheet(o){
+  const ref='PLS-PAY-'+code().slice(4);
+  let method='card',timer=null,d;
+  const lines=o.lineItems.map(l=>'<div class="rrow"><span>'+esc(l.label)+'</span><span>'+money(l.amount)+'</span></div>').join('');
+  function tabs(){
+    const t=[['card','Card','card'],['gpay','Google Pay','wallet'],['apay','Apple Pay','apple'],['cashapp','Cash App','qr']];
+    return '<div class="payTabs" role="tablist" aria-label="Payment method">'+t.map(([id,label,icn])=>
+      '<button role="tab" id="tab-'+id+'" aria-selected="'+(method===id)+'" aria-controls="panel-pay" data-method="'+id+'">'+ic(icn)+label+'</button>').join('')+'</div>';
+  }
+  function panel(){
+    if(method==='card')return '<div class="field"><label for="ccName">Name on card</label><input id="ccName" autocomplete="off"></div>'+
+      '<div class="field"><label for="ccNum">Card number</label><input id="ccNum" inputmode="numeric" placeholder="4242 4242 4242 4242" autocomplete="off"></div>'+
+      '<div style="display:flex;gap:10px"><div class="field" style="flex:1"><label for="ccExp">Expiry</label><input id="ccExp" placeholder="12/28" autocomplete="off"></div>'+
+      '<div class="field" style="flex:1"><label for="ccCvc">CVC</label><input id="ccCvc" inputmode="numeric" placeholder="123" autocomplete="off"></div></div>'+
+      '<button class="btn" data-paycard style="width:100%;margin-top:16px">Pay '+money(o.total)+'</button>'+
+      '<p class="hint">Demo fields — the real app mounts Adyen Components iframes (SAQ-A).</p>';
+    if(method==='gpay')return '<button class="walletBtn" data-wallet="Google Pay" aria-label="Pay with Google Pay"><span class="gG" aria-hidden="true">G</span> Pay</button>'+
+      '<p class="hint">Opens the Google Pay sheet (simulated below in this demo).</p><div data-walletsheet></div>';
+    if(method==='apay')return '<button class="walletBtn" data-wallet="Apple Pay" aria-label="Pay with Apple Pay">'+ic('apple','width:20px;height:20px')+' Pay</button>'+
+      '<p class="hint">Opens the Apple Pay sheet (simulated below in this demo).</p><div data-walletsheet></div>';
+    return '<button class="qrPayBox" data-cashscan aria-label="Simulate scanning the Cash App code">'+
+      QR.svg('https://cash.app/pay/pioneer-demo?amount='+o.total.toFixed(2)+'&ref='+ref,{label:'Cash App Pay QR code',dark:'#00B82B'})+
+      '<div class="cap">Scan with Cash App to pay '+money(o.total)+'</div></button>'+
+      '<p class="hint" style="text-align:center">Waiting for scan… completes automatically in this demo (or tap the code).</p>';
+  }
+  function body(){
+    return '<h2 class="dlgTitle">'+esc(o.title)+'</h2>'+
+      '<div class="payAmount">'+money(o.total)+'</div>'+
+      '<div class="receipt">'+lines+'</div>'+tabs()+
+      '<div id="panel-pay" role="tabpanel" aria-labelledby="tab-'+method+'">'+panel()+'</div>'+
+      '<div class="splits">'+ic('layers','width:15px;height:15px')+'Pioneer Library System · EnvisionWare rail (Adyen)</div>';
+  }
+  function success(methodLabel){
+    if(timer){clearTimeout(timer);timer=null;}
+    const when=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+    d.el.innerHTML='<div class="payDone"><div class="okRing">'+ic('check','width:30px;height:30px')+'</div>'+
+      '<h2 class="dlgTitle">Payment complete</h2><p class="muted">'+esc(methodLabel)+' · '+esc(when)+'</p></div>'+
+      '<div class="receipt">'+lines+'<div class="rrow total"><span>Paid</span><span>'+money(o.total)+'</span></div>'+
+      '<div class="rrow"><span class="muted">Receipt</span><span>'+esc(ref)+'</span></div></div>'+
+      '<div class="splits">'+ic('layers','width:15px;height:15px')+'Split: Pioneer Library System · EnvisionWare rail (Adyen)</div>'+
+      demoChip('payments')+
+      '<div class="dlgActions"><button class="btn" data-done autofocus style="width:100%">Done</button></div>';
+    announce('Payment of '+money(o.total)+' complete. Receipt '+ref);
+    d.el.querySelector('[data-done]').onclick=()=>{d.close();};
+    const doneBtn=d.el.querySelector('[data-done]');
+    if(doneBtn)doneBtn.focus();
+    o._receipt={ref,total:o.total,method:methodLabel};
+  }
+  function wire(){
+    d.el.querySelectorAll('[data-method]').forEach(b=>b.onclick=()=>{
+      if(timer){clearTimeout(timer);timer=null;}
+      method=b.dataset.method;
+      d.el.innerHTML=body();wire();
+      const sel=d.el.querySelector('[data-method="'+method+'"]');
+      if(sel)sel.focus();
+    });
+    const pc=d.el.querySelector('[data-paycard]');
+    if(pc)pc.onclick=()=>{
+      pc.disabled=true;pc.innerHTML='<span class="spin" aria-hidden="true"></span> Processing…';
+      announce('Processing card payment');
+      setTimeout(()=>success('Card'),REDUCED?200:1200);
+    };
+    const wb=d.el.querySelector('[data-wallet]');
+    if(wb)wb.onclick=()=>{
+      const name=wb.dataset.wallet;
+      const sheet=d.el.querySelector('[data-walletsheet]');
+      sheet.innerHTML='<div class="walletSheet"><strong>'+esc(name)+'</strong>'+
+        '<div class="wrow"><span>Visa •••• 4242</span><span>'+money(o.total)+'</span></div>'+
+        '<div class="wrow"><span class="muted">Pioneer Library System</span><span class="muted">'+esc(ref)+'</span></div>'+
+        '<button class="btn" data-wconfirm style="width:100%;margin-top:10px">Confirm payment</button></div>';
+      announce(name+' sheet opened');
+      sheet.querySelector('[data-wconfirm]').focus();
+      sheet.querySelector('[data-wconfirm]').onclick=()=>success(name);
+    };
+    const cs=d.el.querySelector('[data-cashscan]');
+    if(cs){
+      cs.onclick=()=>success('Cash App Pay');
+      timer=setTimeout(()=>success('Cash App Pay'),3000);
+    }
+  }
+  d=openDialog(body(),{label:o.title,onClose:()=>{
+    if(timer){clearTimeout(timer);timer=null;}
+    if(o._receipt&&o.onSuccess)o.onSuccess(o._receipt);
+  }});
+  wire();
+}
+
+/* =====================================================================
+   Settings (gear) — demo mode, router mode, live key, QR base URL, kiosk
+   ===================================================================== */
+function openSettings(){
+  const base=localStorage.getItem('piq_baseurl')||'';
+  const d=openDialog(
+    '<h2 class="dlgTitle">Settings</h2>'+
+    '<div class="settingsBlock" style="border-top:0;margin-top:6px;padding-top:0"><h3>Demo mode</h3>'+
+    '<div class="switchRow"><input type="checkbox" id="setDemo" '+(state.demo?'checked':'')+'>'+
+    '<label for="setDemo">Show the level beneath — the EnvisionWare product and API call under every fulfilled action</label></div></div>'+
+    '<div class="settingsBlock"><h3>Concierge brain</h3>'+
+    '<div class="radioRow"><input type="radio" name="brain" id="brainMock" '+(state.live?'':'checked')+'><label for="brainMock">Mock router (offline, deterministic — feel the flow)</label></div>'+
+    '<div class="radioRow"><input type="radio" name="brain" id="brainLive" '+(state.live?'checked':'')+'><label for="brainLive">Live Claude (real model, grounded in Pioneer data)</label></div>'+
+    '<div class="field"><label for="setKey">Anthropic API key</label><input type="password" id="setKey" value="'+esc(state.apiKey)+'" placeholder="sk-ant-…" autocomplete="off"></div>'+
+    '<div class="field"><label for="setModel">Model</label><input id="setModel" value="'+esc(state.model)+'" autocomplete="off"></div>'+
+    '<p class="hint">Live mode calls api.anthropic.com directly from this browser (direct-browser-access header). Key stays in this tab only — fine for tinkering, never ship a key client-side.</p></div>'+
+    '<div class="settingsBlock"><h3>Scan-to-phone URL</h3>'+
+    '<div class="field"><label for="setBase">Patron app URL encoded in kiosk QR</label><input id="setBase" value="'+esc(base)+'" placeholder="'+esc(location.href.replace(/[?#].*$/,''))+'" autocomplete="off"></div>'+
+    '<p class="hint">Host this folder (e.g. <strong>npx serve</strong> or a Netlify drop) and set the URL here so phones can scan. Left blank, the QR encodes this page’s own address — a file:// address won’t open on a phone.</p></div>'+
+    '<div class="settingsBlock"><h3>Kiosk mode</h3>'+
+    (KIOSK?'<a class="btn ghost sm" href="'+esc(location.href.replace(/[?#].*$/,''))+'">Exit kiosk mode</a>'
+          :'<a class="btn ghost sm" href="'+esc(kioskUrl())+'">Open kiosk mode</a>')+
+    '<p class="hint">Kiosk mode is the same app in an attract layout — large targets and a scannable QR so patrons take it to their phone.</p></div>'+
+    '<div class="dlgActions"><button class="btn" data-x autofocus>Done</button></div>',
+    {label:'Settings'});
+  d.el.querySelector('#setDemo').onchange=e=>{
+    state.demo=e.target.checked;
+    localStorage.setItem('piq_demo',state.demo?'1':'0');
+    announce('Demo mode '+(state.demo?'on':'off'));
+  };
+  d.el.querySelector('#brainMock').onchange=()=>{state.live=false;localStorage.setItem('piq_mode','mock');};
+  d.el.querySelector('#brainLive').onchange=()=>{state.live=true;localStorage.setItem('piq_mode','live');};
+  d.el.querySelector('#setKey').oninput=e=>{state.apiKey=e.target.value.trim();};
+  d.el.querySelector('#setModel').oninput=e=>{state.model=e.target.value.trim();localStorage.setItem('piq_model',state.model);};
+  d.el.querySelector('#setBase').oninput=e=>{localStorage.setItem('piq_baseurl',e.target.value.trim());};
+  d.el.querySelector('[data-x]').onclick=()=>{d.close();render();};
+}
+
+/* =====================================================================
+   Notes dock (shared feedback loop — localStorage 'piq_notes')
+   ===================================================================== */
+function saveNotes(){localStorage.setItem('piq_notes',JSON.stringify(state.notes));}
+function paintNotes(){
+  $('#noteList').innerHTML=state.notes.map((n,i)=>
+    '<div class="noteItem"><button class="del" data-del="'+i+'" aria-label="Delete note">×</button>'+
+    '<div class="meta">'+esc(n.context)+'</div>'+esc(n.text)+'</div>').join('');
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{state.notes.splice(+b.dataset.del,1);saveNotes();paintNotes();});
+}
+function openNotes(){$('#notesDock').hidden=false;requestAnimationFrame(()=>{$('#notesDock').classList.add('open');$('#noteInput').focus();});}
+function closeNotes(){$('#notesDock').classList.remove('open');setTimeout(()=>{$('#notesDock').hidden=true;},REDUCED?0:210);$('#notesFab').focus();}
+$('#notesFab').onclick=openNotes;
+$('#dockClose').onclick=closeNotes;
+$('#addNote').onclick=()=>{
+  const t=$('#noteInput').value.trim();
+  if(!t)return;
+  const ctx=state.lastInteraction
+    ?'screen: '+state.view+' · last: “'+state.lastInteraction.utterance+'” → '+state.lastInteraction.route
+    :'screen: '+state.view+(KIOSK?' (kiosk)':'');
+  state.notes.push({text:t,context:ctx});
+  saveNotes();paintNotes();
+  $('#noteInput').value='';
+  announce('Note added');
+};
+$('#clearNotes').onclick=()=>{if(confirm('Clear all notes?')){state.notes=[];saveNotes();paintNotes();}};
+$('#copyNotes').onclick=()=>{
+  if(!state.notes.length){announce('No notes yet');return;}
+  let md='# PatronIQ explorer feedback\n\nPlease apply these changes to the PatronIQ design mock (patroniq-v2/explorer):\n\n';
+  state.notes.forEach((n,i)=>{md+=(i+1)+'. '+n.text+'\n   - context: '+n.context+'\n';});
+  navigator.clipboard.writeText(md).then(()=>{
+    const b=$('#copyNotes'),old=b.innerHTML;
+    b.textContent='Copied — paste into chat';
+    setTimeout(()=>{b.innerHTML=old;},2000);
+  });
+};
+
+/* =====================================================================
+   Router / boot
+   ===================================================================== */
+const VIEWS={home:viewHome,concierge:viewConcierge,account:viewAccount,events:viewEvents,rooms:viewRooms};
+const VIEW_NAMES={home:'Home',concierge:'Ask the library',account:'My account',events:'Events',rooms:'Rooms'};
+function render(){VIEWS[state.view]();}
+function nav(view){
+  if(!VIEWS[view])view='home';
+  state.view=view;
+  document.querySelectorAll('.tabbar button').forEach(b=>{
+    if(b.dataset.nav===view)b.setAttribute('aria-current','page');
+    else b.removeAttribute('aria-current');
+  });
+  render();
+  $('#main').scrollTop=0;
+  $('#main').focus({preventScroll:true});
+  announce(VIEW_NAMES[view]+' view');
+}
+document.querySelectorAll('.tabbar button').forEach(b=>b.onclick=()=>nav(b.dataset.nav));
+$('#gearBtn').onclick=openSettings;
+function tick(){
+  const d=new Date();
+  $('#clock').textContent=d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})+' · '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+}
+if(KIOSK){tick();setInterval(tick,30000);}
+$('#brandName').textContent=D.theme.shortName;
+paintNotes();
+nav('home');
+// PWA: register the scoped service worker so the patron app is installable (Add to Home Screen).
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+</script>
+<script src="../workbench-data/notes-sync.js"></script>
+</body>
+</html>
