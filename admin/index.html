@@ -95,6 +95,10 @@
   .b-pass{background:var(--success-soft);color:var(--success)}
   .b-warn{background:var(--warning-soft);color:var(--warning)}
   .b-fail{background:var(--danger-soft);color:var(--danger)}
+  .capsrow{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px}
+  .capchip{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:var(--ink)}
+  .capchip input{width:16px;height:16px;accent-color:var(--primary)}
+  #ilsq{flex:1;min-width:0}
 
   .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px}
   .card h2{margin:0 0 2px;font-size:16px;font-weight:600;display:flex;align-items:center;gap:9px}
@@ -969,6 +973,7 @@ function vAiUsage(w){
 
 /* ---------- 5. MODULES (R15) ---------- */
 function vModules(w){
+  const ilsCard=document.createElement('div'); ilsCard.className='card'; ilsCard.id='ilsCard'; w.append(ilsCard); drawIls();
   const c=document.createElement('div'); c.className='card';
   c.innerHTML='<h2>Enabled modules</h2><p class="desc">Every EnvisionWare product plugs in behind the IIntegrationModule contract (R8). Enabling a product creates a ModuleInstance row — config only, no code changes.</p>'+
     '<div class="modgrid" id="modGrid"></div>'+
@@ -976,6 +981,53 @@ function vModules(w){
   w.append(c);
   drawModules();
   $('#addProduct').onclick=catalogDialog;
+}
+// ILS integration — the agnostic backbone: SIP2 to any ILS, or the vendor's native API.
+// Proves catalog discovery + shelf location, which is what the patron app wayfinds to.
+function drawIls(){
+  const el=document.getElementById('ilsCard'); if(!el)return;
+  const s=loadIls(), sip=s.mode==='sip2', caps=s.capabilities||{}, conn=s.status==='connected';
+  el.innerHTML='<h2>ILS integration '+(conn?'<span class="badge b-pass">Connected</span>':'<span class="badge b-warn">Not connected</span>')+
+      '<span class="badge b-mock" style="margin-left:6px">'+esc(s.vendor||'—')+'</span></h2>'+
+    '<p class="desc">EnvisionWare is <b>ILS-agnostic</b>. Connect to any ILS over <b>SIP2</b>, or bind directly to the vendor’s <b>native API</b> for real-time catalog discovery, holds, and shelf-level location. The PatronIQ concierge and wayfinding read live availability from here; patrons finish checkout at any self-check (RFID).</p>'+
+    '<div class="fgrid">'+
+      '<div class="f"><label for="ils-vendor">ILS vendor</label><select id="ils-vendor">'+ILS_VENDORS.map(v=>'<option'+(v===s.vendor?' selected':'')+'>'+esc(v)+'</option>').join('')+'</select></div>'+
+      '<div class="f"><label for="ils-mode">Connection</label><select id="ils-mode"><option value="sip2"'+(sip?' selected':'')+'>SIP2</option><option value="direct"'+(!sip?' selected':'')+'>Direct native API</option></select></div>'+
+      (sip
+        ? f('SIP2 host','ils-host',(s.sip2||{}).host,'text')+f('Port','ils-port',(s.sip2||{}).port||6001,'number')+f('SIP2 user','ils-user',(s.sip2||{}).user)+f('Location code','ils-loc',(s.sip2||{}).location)
+        : f('API base URL','ils-base',(s.direct||{}).baseUrl,'text','full')+f('API flavor','ils-flavor',(s.direct||{}).flavor,'text','full')+f('Auth','ils-auth',(s.direct||{}).auth))+
+    '</div>'+
+    '<div class="capsrow">'+ILS_CAPS.map(c=>'<label class="capchip"><input type="checkbox" data-cap="'+c[0]+'"'+(caps[c[0]]?' checked':'')+'>'+esc(c[1])+'</label>').join('')+'</div>'+
+    '<div style="display:flex;gap:8px;margin-top:12px"><button class="btn sm" id="ilsSave">'+ic('check')+'Save connection</button><button class="btn ghost sm" id="ilsTest">'+ic('refresh')+'Test connection</button></div>'+
+    '<div style="border-top:1px solid var(--line);margin-top:16px;padding-top:14px">'+
+      '<h3 style="margin:0 0 4px">Catalog / discovery test</h3>'+
+      '<p class="desc" style="margin:0 0 10px">Search the live catalog the way a patron — or the AI concierge — would. Results show availability by branch and the shelf location wayfinding routes to.</p>'+
+      '<div style="display:flex;gap:8px"><input id="ilsq" placeholder="Title, author, or subject — e.g. Atomic Habits"><button class="btn sm" id="ilsSearch">'+ic('search')+'Search</button></div>'+
+      '<div id="ilsResults" style="margin-top:12px"></div></div>';
+  el.querySelector('#ils-vendor').onchange=e=>{ const s2=loadIls(); s2.vendor=e.target.value; if(/SIP2/.test(s2.vendor))s2.mode='sip2'; saveIls(s2); drawIls(); };
+  el.querySelector('#ils-mode').onchange=e=>{ const s2=loadIls(); s2.mode=e.target.value; saveIls(s2); drawIls(); };
+  el.querySelector('#ilsSave').onclick=()=>{ const s2=loadIls();
+    if(s2.mode==='sip2') s2.sip2={host:ilsVal('ils-host'),port:+ilsVal('ils-port')||6001,user:ilsVal('ils-user'),location:ilsVal('ils-loc')};
+    else s2.direct={baseUrl:ilsVal('ils-base'),flavor:ilsVal('ils-flavor'),auth:ilsVal('ils-auth')};
+    s2.capabilities={}; el.querySelectorAll('[data-cap]').forEach(x=>s2.capabilities[x.dataset.cap]=x.checked);
+    s2.status='connected'; saveIls(s2); drawIls(); toast('ILS connection saved — PUT /api/v1/admin/integrations/ils');
+    if(window.PIQNotes&&PIQNotes.push)PIQNotes.push('Saved ILS connection: '+s2.vendor+' ('+(s2.mode==='sip2'?'SIP2':'direct API')+')','admin · modules'); };
+  el.querySelector('#ilsTest').onclick=e=>{ const b=e.currentTarget; b.disabled=true; b.textContent='Testing…';
+    setTimeout(()=>{ b.disabled=false; b.innerHTML=ic('refresh')+'Test connection'; const s2=loadIls();
+      toast(s2.vendor+' — patron auth OK · item status OK · '+(s2.mode==='sip2'?'SIP2 :6001':'API')+' 200 in '+(70+((s2.vendor||'').length%40))+'ms'); },800); };
+  el.querySelector('#ilsSearch').onclick=ilsSearch;
+  el.querySelector('#ilsq').onkeydown=e=>{ if(e.key==='Enter')ilsSearch(); };
+}
+function ilsSearch(){
+  const raw=ilsVal('ilsq'), q=raw.toLowerCase(), out=document.getElementById('ilsResults'); if(!out)return;
+  if(!q){ out.innerHTML=''; return; }
+  const books=(D.books||[]).filter(b=>(b.title+' '+b.author+' '+b.subject+' '+b.format).toLowerCase().includes(q));
+  const wf=id=>((D.wayfinding||[]).find(w=>w.id===id)||{}).label||id;
+  if(!books.length){ out.innerHTML='<p class="desc">No holdings match “'+esc(raw)+'” — the ILS discovery API returned 0 records.</p>'; return; }
+  out.innerHTML='<div style="overflow-x:auto"><table><thead><tr><th>Title</th><th>Format</th><th>Call #</th><th>Shelf (wayfinding)</th><th>Availability</th></tr></thead><tbody>'+
+    books.map(b=>'<tr><td><b>'+esc(b.title)+'</b><div style="font-size:12px;color:var(--ink-muted)">'+esc(b.author)+'</div></td><td>'+esc(b.format)+'</td><td class="mono">'+esc(b.call)+'</td><td>'+esc(wf(b.zone))+'</td><td>'+
+      b.copies.map(c=>'<span class="badge '+(c.status==='in'?'b-pass':(c.status==='holdshelf'?'b-mock':'b-warn'))+'">'+esc(c.branch)+': '+(c.status==='in'?'Available':(c.status==='holdshelf'?'Holds shelf':'Out'+(c.due?' ('+c.due+')':'')))+'</span>').join(' ')+'</td></tr>').join('')+
+    '</tbody></table></div><p class="desc" style="margin-top:8px">'+books.length+' record(s) returned by the '+esc(loadIls().vendor||'ILS')+' discovery API. These shelf locations are exactly what PatronIQ routes patrons to.</p>';
 }
 function drawModules(){
   $('#modGrid').innerHTML=MODULES.map((m,i)=>
@@ -1113,6 +1165,13 @@ function libDomain(){
 const SMTP_KEY='piq_admin_smtp';
 function loadSmtp(){ try{ return JSON.parse(localStorage.getItem(SMTP_KEY)||'null')||{}; }catch(e){ return {}; } }
 function saveSmtp(s){ localStorage.setItem(SMTP_KEY, JSON.stringify(s)); }
+/* ---------- ILS integration config (ILS-agnostic: SIP2 or direct native API) ---------- */
+const ILS_KEY='piq_admin_ils';
+const ILS_VENDORS=['Generic SIP2','SirsiDynix Symphony','SirsiDynix Horizon','Innovative Sierra','Innovative Polaris','Koha','Ex Libris Alma','OCLC WorldShare','Evergreen','TLC Library•Solution'];
+const ILS_CAPS=[['patronAuth','Patron authentication'],['circulation','Circulation (checkout/renew)'],['holds','Holds'],['availability','Real-time availability'],['discovery','Catalog / discovery search'],['shelfLocation','Shelf-location mapping']];
+function loadIls(){ try{ const s=JSON.parse(localStorage.getItem(ILS_KEY)||'null'); if(s)return s; }catch(e){} return JSON.parse(JSON.stringify(D.ils||{mode:'sip2',sip2:{},direct:{},capabilities:{}})); }
+function saveIls(s){ localStorage.setItem(ILS_KEY, JSON.stringify(s)); }
+function ilsVal(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
 function vUsers(w){
   const _sender=(loadSmtp().fromAddr)||('no-reply@'+libDomain());
   w.insertAdjacentHTML('beforeend','<div class="card"><h2>Staff accounts</h2><p class="desc">Local accounts + RBAC now; external identity per connector below (D4). Roles gate both this console and the API. Account emails (invites, password resets, temporary passwords) are sent from <b>'+esc(_sender)+'</b> via the SMTP server configured below.</p>'+

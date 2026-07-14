@@ -168,7 +168,18 @@
   .rt-transaction{background:var(--success-wash);color:var(--success)}
   .rt-wayfind{background:var(--accent-wash);color:var(--accent-deep)}
   .rt-answer{background:var(--primary-tint);color:var(--primary)}
+  .rt-catalog{background:var(--primary-tint);color:var(--primary-strong)}
   .rt-escalate{background:var(--danger-wash);color:var(--danger)}
+  /* catalog / ILS book cards */
+  .bookCard{border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-top:10px;background:var(--surface)}
+  .bookCard.primary{border-color:var(--accent-deep);background:var(--accent-wash)}
+  .bkTop{display:flex;gap:11px;align-items:flex-start}.bkTop .ic{flex:none;color:var(--accent-deep);margin-top:2px}
+  .bkTitle{font-size:16px;font-weight:600;line-height:1.25}
+  .bkMeta{font-size:13px;color:var(--ink-muted);margin-top:2px}
+  .bkAvail{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .bkActions{margin-top:12px}
+  .bkNote{font-size:13.5px;color:var(--ink-muted);line-height:1.45;margin:10px 0 0}
+  .moreBooks{margin-top:10px}.moreLbl{font-size:12.5px;font-weight:600;color:var(--ink-muted);letter-spacing:.03em;margin-top:6px}
   .aiLead{font-size:16.5px;font-weight:600;margin:2px 0 4px}
   .aiBody{font-size:15.5px}
   .aiBody p{margin:.35em 0}
@@ -498,6 +509,7 @@ const IC={
   book:'<path d="M12 6.5C10.5 4.8 8.4 4 5.5 4H3v14.5h3c2.6 0 4.6.8 6 2.5 1.4-1.7 3.4-2.5 6-2.5h3V4h-2.5c-2.9 0-5 .8-6.5 2.5Z"/><path d="M12 6.5V21"/>',
   card:'<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/>',
   camera:'<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.1-1.7A1 1 0 0 1 9.5 4.8h5a1 1 0 0 1 .9.5L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5Z"/><circle cx="12" cy="12.8" r="3.2"/>',
+  search:'<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.3-4.3"/>',
   pin:'<path d="M12 21s-6.5-5.3-6.5-10a6.5 6.5 0 0 1 13 0c0 4.7-6.5 10-6.5 10Z"/><circle cx="12" cy="10.5" r="2.5"/>',
   clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   check:'<path d="M4.5 12.5l5 5L19.5 7"/>',
@@ -620,13 +632,79 @@ function openWayfindDialog(){
 }
 
 /* =====================================================================
+   Catalog / ILS lookup — "find a book" → holdings + shelf location, then
+   wayfind to the exact section (checkout finishes at any self-check / RFID).
+   ===================================================================== */
+function bookById(id){ return (D.books||[]).find(b=>b.id===id); }
+function catalogSearch(text){
+  const q=String(text||'').toLowerCase().replace(/[^\w\s]/g,' ').trim();
+  if(!q)return [];
+  const words=q.split(/\s+/).filter(w=>w.length>2);
+  return (D.books||[]).map(b=>{
+    const hay=(b.title+' '+b.author+' '+b.subject+' '+b.format).toLowerCase();
+    let score=0;
+    if(q.includes(b.title.toLowerCase()))score+=6;      // whole title present in the query
+    if(b.title.toLowerCase().includes(q))score+=4;      // query is a title fragment
+    words.forEach(w=>{ if(hay.includes(w))score+=1; });
+    return {b,score};
+  }).filter(x=>x.score>=2).sort((a,b)=>b.score-a.score).map(x=>x.b);
+}
+// Walk the patron to the shelf zone for a specific title (call number shown on arrival).
+function bookWayfindTo(id){
+  const bk=bookById(id); if(!bk)return;
+  const w=D.wayfinding.find(x=>x.id===bk.zone)||{id:bk.zone,label:bk.zone,directions:''};
+  if(state.view!=='concierge')nav('concierge');
+  state.thread.push({who:'patron',text:'Take me to “'+bk.title+'”'});
+  state.messages.push({role:'user',content:'Walk me to '+bk.title});
+  state.thread.push({who:'ai',result:{route:'wayfind',payload:{destination_id:w.id,spoken_text:bk.title+' · '+(w.label||''),call:bk.call}}});
+  state.messages.push({role:'assistant',content:JSON.stringify({route:'wayfind',destination_id:w.id,item:bk.title})});
+  state.lastInteraction={utterance:'Walk me to '+bk.title,route:'wayfind',payload:{destination_id:w.id}};
+  paintThread();
+  announce('Directions to '+bk.title);
+}
+function bookCardHtml(b,primary){
+  const avail=b.copies.filter(c=>c.status==='in');
+  const zone=D.wayfinding.find(w=>w.id===b.zone);
+  const badges=b.copies.map(c=>{
+    const cls=c.status==='in'?'b-ok':(c.status==='holdshelf'?'b-blue':'b-neutral');
+    const label=c.status==='in'?'On shelf':(c.status==='holdshelf'?'On holds shelf':('Checked out'+(c.due?' · due '+c.due:'')));
+    return '<span class="badge '+cls+'">'+esc(c.branch)+': '+label+'</span>';
+  }).join(' ');
+  return '<div class="bookCard'+(primary?' primary':'')+'">'+
+    '<div class="bkTop">'+ic('book','width:22px;height:22px')+'<div><div class="bkTitle">'+esc(b.title)+'</div>'+
+      '<div class="bkMeta">'+esc(b.author)+' · '+esc(b.format)+' · <span class="mono">'+esc(b.call)+'</span></div></div></div>'+
+    '<div class="bkAvail">'+badges+'</div>'+
+    (primary?('<div class="bkActions">'+
+      (avail.length?'<button class="btn sm" data-book-wayfind="'+esc(b.id)+'">'+ic('pin','width:16px;height:16px')+'Take me to it</button>'
+                   :'<button class="chip" data-say="Place a hold on '+esc(b.title)+'">'+ic('bell','width:16px;height:16px')+'Place a hold</button>')+'</div>'+
+      (avail.length?'<p class="bkNote">In <b>'+esc(zone?zone.label:b.zone)+'</b> at the call number above — then check out at any self-check station; just tap your card and the RFID reader scans your items.</p>':'')
+    ):'')+
+  '</div>';
+}
+function openBookDialog(){
+  const chips=(D.books||[]).slice(0,4).map(b=>'<button class="chip" type="button" data-bk="'+esc(b.title)+'">'+esc(b.title)+'</button>').join('');
+  const html='<h2 class="dlgTitle">Find a book or movie</h2>'+
+    '<p class="sub" style="margin:2px 0 6px">Search the catalog — I’ll show what’s on the shelf and walk you to it.</p>'+
+    '<form id="bkForm"><div class="field"><label for="bkIn">Title, author, or subject</label>'+
+    '<input id="bkIn" placeholder="e.g. Fourth Wing, Atomic Habits, Dune" autocomplete="off"></div></form>'+
+    '<div class="chips" role="group" aria-label="Popular titles">'+chips+'</div>'+
+    '<div class="dlgActions"><button class="btn ghost" type="button" data-x>Cancel</button>'+
+    '<button class="btn" type="submit" form="bkForm">'+ic('search','width:18px;height:18px')+'Search</button></div>';
+  const d=openDialog(html,{label:'Find a book'});
+  d.el.querySelector('[data-x]').onclick=()=>d.close();
+  d.el.querySelectorAll('[data-bk]').forEach(b=>b.onclick=()=>{d.close();submit('Do you have '+b.dataset.bk+'?');});
+  d.el.querySelector('#bkForm').onsubmit=e=>{e.preventDefault();const v=$('#bkIn').value.trim();if(!v)return;d.close();submit('Find the book '+v);};
+}
+
+/* =====================================================================
    Concierge — mock router (offline) + live Claude, ported & re-grounded
    ===================================================================== */
 const PROMPT_HEADER='You are PatronIQ, the AI concierge for '+D.library.name+', running as a library-branded web app on the patron\'s phone (or an in-branch kiosk). You speak warmly and concisely.\n\n'+
 'DECISION POLICY\nFor every patron turn, call EXACTLY ONE of these tools. Prefer: clarify > transaction > wayfind > answer > escalate.\n\n'+
 '- clarify: (a) info-gathering when a detail is missing; (b) REQUIRED confirmation before committing room_booking or program_registration — name the specific room/program + slot/time and use the explicit verb (book / register), with suggested_replies like ["Yes, book it","No, change something"]. ONE question per turn. Also clarify format for famous multi-format titles before wayfinding.\n'+
 '- transaction: patron wants the library to DO something (book, reserve, print, register, self-check, pick up holds, reserve a PC, pay). The EnvisionWare modules are integrated — treat as completed and produce a confirmation grounded in the context, with a PLS-XXXXXX style confirmation code for bookings/registrations. Never escalate these.\n'+
-'- wayfind: patron wants directions; destination_id MUST match a WAYFINDING id.\n'+
+'- catalog_lookup: patron asks whether the library has a specific book/movie/title, wants to find or locate an item, or asks where a title is. Returns real-time availability by branch (from the ILS) plus the shelf section; PatronIQ then offers to walk them to it and reminds them checkout finishes at any self-check (RFID). Pass the title/author as query.\n'+
+'- wayfind: patron wants directions to a place; destination_id MUST match a WAYFINDING id. (For a specific title, prefer catalog_lookup.)\n'+
 '- answer: answerable from the context — hours, branches, policies, services, events, resources, card policy. IMPORTANT: for any question about fines, answer that '+D.library.name+' is 100% fine-free — fees apply only to lost or damaged items, payable from the Account screen.\n'+
 '- escalate: ONLY for (a) safety/distress/accessibility/harassment, (b) explicit ask for a human, (c) genuinely outside the context. Never invent programs/rooms/services.\n\nLIBRARY CONTEXT\n';
 function renderContext(){
@@ -648,12 +726,18 @@ function renderContext(){
   D.resources.forEach(r=>o.push('- '+r.name+': '+r.label));
   o.push('\nWAYFINDING DESTINATIONS');
   D.wayfinding.forEach(w=>o.push('- ['+w.id+'] '+w.label+': '+w.directions));
+  if(D.ils){ o.push('\nILS INTEGRATION: '+D.ils.vendor+' via '+(D.ils.mode==='sip2'?'SIP2':'direct API')+' — real-time availability, holds, and shelf location. Checkout completes at any self-check (RFID).'); }
+  if(D.books&&D.books.length){
+    o.push('CATALOG (sample holdings — use catalog_lookup for any title):');
+    D.books.forEach(b=>o.push('- "'+b.title+'" by '+b.author+' ['+b.format+', call '+b.call+'] → '+b.zone+' section; '+b.copies.map(c=>c.branch+': '+c.status).join('; ')));
+  }
   return o.join('\n');
 }
 const TOOL_SCHEMAS=[
  {name:'clarify',description:'Ask ONE follow-up question. Use for info-gathering or as the REQUIRED confirmation before room_booking/program_registration.',input_schema:{type:'object',properties:{question:{type:'string'},suggested_replies:{type:'array',items:{type:'string'}}},required:['question','suggested_replies']}},
  {name:'transaction',description:'Fulfil a self-service transaction via the EnvisionWare modules (treat as completed). For room_booking/program_registration you must have already confirmed via clarify.',input_schema:{type:'object',properties:{kind:{type:'string',enum:['room_booking','program_registration','print','payment','holds_pickup','self_check','pc_reservation']},params:{type:'object'},confirmation_message:{type:'string'}},required:['kind','confirmation_message']}},
- {name:'wayfind',description:'Give directions. destination_id MUST match a WAYFINDING id.',input_schema:{type:'object',properties:{destination_id:{type:'string'},spoken_text:{type:'string'}},required:['destination_id','spoken_text']}},
+ {name:'catalog_lookup',description:'Look up a book/movie/title in the library catalog (ILS) to show availability + shelf location. Use when the patron asks if we have a title, wants to find/locate an item, or asks where a specific title is.',input_schema:{type:'object',properties:{query:{type:'string',description:'The title, author, or subject the patron is looking for.'}},required:['query']}},
+ {name:'wayfind',description:'Give directions to a place. destination_id MUST match a WAYFINDING id. For a specific title prefer catalog_lookup.',input_schema:{type:'object',properties:{destination_id:{type:'string'},spoken_text:{type:'string'}},required:['destination_id','spoken_text']}},
  {name:'answer',description:'Answer from the library context. HTML under 140 words, no bullets.',input_schema:{type:'object',properties:{response_html:{type:'string'},suggested_next:{type:'array',items:{type:'object',properties:{label:{type:'string'},action:{type:'string',enum:['open_screen']},screen:{type:'string',enum:['home','events','rooms','account']}},required:['label','action','screen']}}},required:['response_html']}},
  {name:'escalate',description:'Create a staff alert. Only for safety/distress, explicit human request, or genuinely out-of-context.',input_schema:{type:'object',properties:{request_type:{type:'string',enum:['account','technology','language','accessibility','safety','other']},urgency:{type:'string',enum:['normal','urgent']},patron_quote:{type:'string'},wait_estimate_minutes:{type:'integer',minimum:1,maximum:15}},required:['request_type','urgency','patron_quote']}}
 ];
@@ -670,6 +754,7 @@ async function liveRouter(text){
   const tu=(data.content||[]).find(b=>b.type==='tool_use');
   const dbg={mode:'live',model:data.model,latencyMs:Math.round(performance.now()-t0)};
   if(!tu)return{route:'escalate',payload:{request_type:'other',urgency:'normal',patron_quote:text,wait_estimate_minutes:3},debug:dbg};
+  if(tu.name==='catalog_lookup')return{route:'catalog',payload:{query:(tu.input&&tu.input.query)||text},debug:{...dbg,tool:tu.name}};
   return{route:tu.name,payload:tu.input,debug:{...dbg,tool:tu.name}};
 }
 function mockRouter(text){
@@ -698,8 +783,13 @@ function mockRouter(text){
   /* explicit human */
   if(/\b(talk to|speak to|see a) (a )?(librarian|person|human|someone)|real person|staff member\b/.test(q))
     return{route:'escalate',payload:{request_type:'other',urgency:'normal',patron_quote:text,wait_estimate_minutes:3},debug:dbg};
-  /* famous multi-format titles -> clarify format */
-  const titles=['lord of the rings','harry potter','dune','fourth wing','game of thrones','the hobbit','pride and prejudice','hamilton'];
+  /* catalog / ILS lookup — "do you have X", "find the book X", "where is X" */
+  const catHits=catalogSearch(text);
+  const bookIntent=/\b(book|title|author|novel|read|copy|copies|catalog|catalogue|available|checked out|on (the )?shelf|do you have|got|locate|find( me)?|looking for|where('| i)s|where can i)\b/.test(q);
+  if(catHits.length && (bookIntent || catHits.length===1))
+    return{route:'catalog',payload:{query:text,ids:catHits.slice(0,4).map(b=>b.id),topId:catHits[0].id},debug:dbg};
+  /* famous multi-format titles -> clarify format (titles not in our catalog) */
+  const titles=['lord of the rings','harry potter','game of thrones','the hobbit','pride and prejudice','hamilton'];
   if(titles.some(t=>q.includes(t))&&!/\b(book|audiobook|dvd|movie|ebook|e-book)\b/.test(q))
     return{route:'clarify',payload:{question:'Are you looking for the book, the audiobook, the DVD, or the eBook?',suggested_replies:['Book','Audiobook','DVD','eBook']},debug:dbg};
   /* fines / fees — Pioneer is fine-free */
@@ -806,8 +896,18 @@ function routeHtml(r){
     const w=D.wayfinding.find(x=>x.id===p.destination_id);
     inner='<div class="aiLead">'+esc(p.spoken_text||(w?w.label:'Directions'))+'</div>'+
       (w?'<div class="directions">'+esc(w.directions)+'</div>':'')+
+      (p.call?'<div class="directions">Look for the spine label <b class="mono">'+esc(p.call)+'</b>, then finish at any self-check (RFID).</div>':'')+
       miniMap(w?w.label:'Destination')+
       floorMapImg(w?w.label:'Destination');
+  }else if(r.route==='catalog'){
+    const results=(p.ids?p.ids.map(bookById):catalogSearch(p.query||'')).filter(Boolean);
+    if(!results.length){
+      inner='<div class="aiBody"><p>I couldn’t find that title on our shelves. I can check our eBook and audiobook collections, or connect you with a librarian.</p></div>'+
+        '<div class="chips"><button class="chip" data-say="Search Libby ebooks">Search eBooks</button><button class="chip" data-say="Talk to a librarian">Talk to a librarian</button></div>';
+    }else{
+      inner='<div class="aiLead">Here’s what the catalog shows</div>'+bookCardHtml(results[0],true)+
+        (results.length>1?'<div class="moreBooks"><div class="moreLbl">Other matches</div>'+results.slice(1,4).map(b=>bookCardHtml(b,false)).join('')+'</div>':'');
+    }
   }else if(r.route==='answer'){
     inner='<div class="aiBody">'+(p.response_html||'')+'</div>'+
       ((p.suggested_next||[]).length?'<div class="chips">'+p.suggested_next.map(n=>'<button class="chip" data-screen="'+esc(n.screen)+'">'+esc(n.label)+'</button>').join('')+'</div>':'');
@@ -830,6 +930,7 @@ function paintThread(){
   }).join('');
   t.querySelectorAll('[data-say]').forEach(b=>b.onclick=()=>submit(b.dataset.say));
   t.querySelectorAll('[data-screen]').forEach(b=>b.onclick=()=>nav(b.dataset.screen));
+  t.querySelectorAll('[data-book-wayfind]').forEach(b=>b.onclick=()=>bookWayfindTo(b.dataset.bookWayfind));
   $('#main').scrollTop=$('#main').scrollHeight;
 }
 
@@ -838,6 +939,7 @@ function paintThread(){
    ===================================================================== */
 const QUICK=['Where do I pick up holds?','Book a study room','Sign me up for yoga tonight','Do I owe any fines?','Is there storytime today?','I need to print my resume'];
 const MODULE_TILES={
+  findbook:{icon:'search',t:'Find a book',d:'Search the catalog & get walked to the shelf',go:()=>openBookDialog()},
   wayfind:{icon:'pin',t:'Find something',d:'Directions to holds, rooms, restrooms & more',go:()=>openWayfindDialog()},
   pcres:{icon:'monitor',t:'Use a computer',d:'Reserve a session at any branch',go:()=>submit('Reserve a computer for me')},
   print:{icon:'printer',t:'Print & copy',d:'From your phone — B&W $0.10, color $0.50',go:()=>submit('I need to print')},
@@ -860,8 +962,9 @@ function viewHome(){
                :'<h1>'+greeting()+'.</h1><p class="sub">Welcome to '+esc(D.library.name)+' — '+esc(D.theme.tagline.toLowerCase())+'</p>';
   const tileFor=key=>{const t=MODULE_TILES[key];if(!t)return '';
     return '<button class="tile" data-tile="'+esc(key)+'">'+ic(t.icon)+'<span class="tt">'+esc(t.t)+'</span><span class="td">'+esc(t.d)+'</span></button>';};
-  // Wayfinding leads the Services grid — it's a first-class quick service (no module gate).
-  const tiles=tileFor('wayfind')+D.modules.enabled.map(m=>tileFor(m.key)).join('');
+  // Find-a-book (catalog/ILS) and Wayfinding lead the Services grid — first-class quick
+  // services, not gated on a product module.
+  const tiles=tileFor('findbook')+tileFor('wayfind')+D.modules.enabled.map(m=>tileFor(m.key)).join('');
   const evPrev=D.events.slice(0,3).map(e=>
     '<div class="rowline"><div><div class="t">'+esc(e.title)+'</div><div class="d">'+esc(e.time)+' · '+esc(e.branch)+(e.registration==='required'?' · registration required':'')+'</div></div>'+
     '<span class="badge '+(e.registration==='required'?'b-warn':'b-ok')+'">'+(e.registration==='required'?(e.seatsLeft+' seats'):'Drop-in')+'</span></div>').join('');
@@ -1399,7 +1502,11 @@ const ES={
   'Use this number':'Usar este número','Retake':'Volver a tomar','Cancel':'Cancelar','Close':'Cerrar',
   'Recover your card & PIN':'Recupera tu tarjeta y PIN',
   'Enter the email or mobile number on your library account. We’ll send your card number and a link to reset your PIN.':'Ingresa el correo o número de celular de tu cuenta. Te enviaremos tu número de tarjeta y un enlace para restablecer tu PIN.',
-  'Email or mobile number':'Correo o número de celular','Send it to me':'Envíamelo'
+  'Email or mobile number':'Correo o número de celular','Send it to me':'Envíamelo',
+  'Find a book':'Buscar un libro','Search the catalog & get walked to the shelf':'Busca en el catálogo y te llevamos al estante',
+  'Find a book or movie':'Buscar un libro o película','Title, author, or subject':'Título, autor o tema',
+  'Search':'Buscar','Take me to it':'Llévame ahí','Place a hold':'Reservar','Other matches':'Otras coincidencias',
+  'Here’s what the catalog shows':'Esto es lo que muestra el catálogo','On shelf':'En estante','Checked out':'Prestado','On holds shelf':'En estante de reservas'
 };
 function _trText(t){
   if(t.parentNode&&/^(SCRIPT|STYLE)$/.test(t.parentNode.nodeName))return;

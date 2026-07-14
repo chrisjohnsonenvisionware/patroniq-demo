@@ -75,7 +75,11 @@ window.PIONEER_DATA = {
     {id:"study",label:"Study rooms",directions:"Left corridor past the computer area — rooms 1 and 2."},
     {id:"print",label:"Print / copy station",directions:"Next to the public computers, left of the service desk."},
     {id:"restroom",label:"Restrooms",directions:"Back hallway near the community room, fully accessible."},
-    {id:"makerspace",label:"Maker Studio",directions:"Library Lab: rear of the space, staff can badge you in for appointments."}
+    {id:"makerspace",label:"Maker Studio",directions:"Library Lab: rear of the space, staff can badge you in for appointments."},
+    {id:"fiction",label:"Adult Fiction",directions:"Main floor, right of the New Releases wall — shelved A–Z by the author's last name."},
+    {id:"nonfiction",label:"Nonfiction",directions:"Main floor, left wing — arranged by Dewey number; follow the end-cap signs."},
+    {id:"media",label:"Movies & Music",directions:"Near the entrance by the holds shelf — DVDs and CDs on the carousel racks."},
+    {id:"teen",label:"Teen Zone",directions:"Upper level above the children's area — graphic novels along the back wall."}
   ],
   patrons: [
     {id:"21000012345678",pin:"1234",name:"Jordan Ellis",branch:"Norman West",checkouts:[
@@ -85,6 +89,37 @@ window.PIONEER_DATA = {
      holds:[{title:"Fourth Wing",status:"Ready for pickup",location:"Norman West holds shelf"},{title:"Iron Flame",status:"#3 in queue"}],
      fees:[{desc:"Lost item: Goodnight Moon (board book)",amount:8.99}], feesNote:"Pioneer is fine-free — fees apply only to lost/damaged items."},
     {id:"21000098765432",pin:"4321",name:"Sam Rivera",branch:"Moore",checkouts:[],holds:[],fees:[]}
+  ],
+  // ILS integration — EnvisionWare is ILS-agnostic: connect over SIP2 to any ILS, or bind
+  // directly to the vendor's native API for richer real-time catalog/discovery + holds.
+  ils: {
+    vendor:"SirsiDynix Symphony", mode:"direct", status:"connected", lastSync:"2 min ago",
+    sip2:{host:"sip.pioneerlibrarysystem.org", port:6001, user:"envisionware", location:"NORMAN-W"},
+    direct:{baseUrl:"https://ils.pioneerlibrarysystem.org/ilsws", flavor:"Symphony Web Services (ILSWS)", auth:"API key"},
+    capabilities:{patronAuth:true, circulation:true, holds:true, availability:true, discovery:true, shelfLocation:true}
+  },
+  // Sample catalog holdings the ILS returns. zone → a WAYFINDING id so PatronIQ can route to the shelf.
+  books: [
+    {id:"b1", title:"Fourth Wing", author:"Rebecca Yarros", format:"Book", call:"FIC YAR", zone:"fiction", subject:"Fantasy romance",
+     copies:[{branch:"Norman West",status:"in"},{branch:"Moore",status:"out",due:"in 4 days"}]},
+    {id:"b2", title:"Iron Flame", author:"Rebecca Yarros", format:"Book", call:"FIC YAR", zone:"fiction", subject:"Fantasy romance",
+     copies:[{branch:"Norman West",status:"holdshelf"},{branch:"Norman East",status:"in"}]},
+    {id:"b3", title:"Lessons in Chemistry", author:"Bonnie Garmus", format:"Book", call:"FIC GAR", zone:"fiction", subject:"Historical fiction",
+     copies:[{branch:"Norman West",status:"in"},{branch:"Norman East",status:"in"}]},
+    {id:"b4", title:"Dune", author:"Frank Herbert", format:"Book", call:"SF HER", zone:"fiction", subject:"Science fiction",
+     copies:[{branch:"Norman West",status:"in"},{branch:"Moore",status:"in"}]},
+    {id:"b5", title:"The Midnight Library", author:"Matt Haig", format:"Book", call:"FIC HAI", zone:"fiction", subject:"Contemporary fiction",
+     copies:[{branch:"Norman West",status:"out",due:"in 9 days"},{branch:"Moore",status:"in"}]},
+    {id:"b6", title:"Atomic Habits", author:"James Clear", format:"Book", call:"158.1 CLE", zone:"nonfiction", subject:"Self-help / productivity",
+     copies:[{branch:"Norman West",status:"in"}]},
+    {id:"b7", title:"Sapiens: A Brief History of Humankind", author:"Yuval Noah Harari", format:"Book", call:"909 HAR", zone:"nonfiction", subject:"History",
+     copies:[{branch:"Norman West",status:"in"},{branch:"Norman East",status:"out",due:"in 2 days"}]},
+    {id:"b8", title:"Goodnight Moon", author:"Margaret Wise Brown", format:"Picture book", call:"E BRO", zone:"children", subject:"Children's picture book",
+     copies:[{branch:"Norman West",status:"in"},{branch:"Moore",status:"in"}]},
+    {id:"b9", title:"Dog Man: The Scarlet Shedder", author:"Dav Pilkey", format:"Graphic novel", call:"J GN PIL", zone:"children", subject:"Children's graphic novel",
+     copies:[{branch:"Norman West",status:"in"}]},
+    {id:"b10", title:"Oppenheimer", author:"dir. Christopher Nolan", format:"DVD", call:"DVD OPP", zone:"media", subject:"Drama / biography",
+     copies:[{branch:"Norman West",status:"in"},{branch:"Moore",status:"out",due:"in 5 days"}]}
   ],
   modules: {
     enabled: [
