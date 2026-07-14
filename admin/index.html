@@ -306,6 +306,9 @@ const U = D.usage || {};
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = n => (n||0).toLocaleString('en-US');
+// Compact axis tick labels so wide numbers (200,000) don't overflow the chart's left margin.
+const fmtAxis = n => { n=n||0; const t=x=>(Math.round(x*10)/10).toString();
+  return n>=1e6?t(n/1e6)+'M':n>=1e3?t(n/1e3)+'k':''+n; };
 const sum = a => (a||[]).reduce((x,y)=>x+y,0);
 
 /* ---------- line icons (24px grid, 1.75 stroke, rounded) ---------- */
@@ -570,11 +573,15 @@ function kpi(l,v,m,sp){ return '<div class="kpi"><div class="l">'+l+'</div><div 
 function lineChartSvg(){
   const days=rangeLabels(), A=series(U.qrScans), B=series(U.appLoads);
   const W=660,H=230,pl=46,pr=16,pt=14,pb=30, pw=W-pl-pr, ph=H-pt-pb;
-  const mx=Math.max.apply(null,A.concat(B)); const step=mx>400?200:100; const ymax=Math.ceil(mx/step)*step;
+  // "Nice" Y-axis step scaled to the data magnitude → ~4-5 ticks at any range (matches dayBars).
+  const mx=Math.max.apply(null,A.concat(B).concat([1]));
+  const raw=mx/4, mag=Math.pow(10,Math.floor(Math.log10(raw))), norm=raw/mag;
+  const step=Math.max(1,(norm<=1?1:norm<=2?2:norm<=5?5:10)*mag);
+  const ymax=Math.ceil(mx/step)*step||step;
   const X=i=>pl+i*pw/(days.length-1), Y=v=>pt+ph-(v/ymax)*ph;
   let s='<svg id="lineSvg" viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Line chart of QR scans and app loads by day" style="max-width:'+W+'px">';
   for(let t=0;t<=ymax;t+=step){ s+='<line x1="'+pl+'" y1="'+Y(t)+'" x2="'+(W-pr)+'" y2="'+Y(t)+'" stroke="'+GRID+'" stroke-width="1"/>'+
-    '<text x="'+(pl-8)+'" y="'+(Y(t)+4)+'" text-anchor="end" font-size="11" fill="#7A7D8A">'+fmt(t)+'</text>'; }
+    '<text x="'+(pl-8)+'" y="'+(Y(t)+4)+'" text-anchor="end" font-size="11" fill="#7A7D8A">'+fmtAxis(t)+'</text>'; }
   days.forEach((d,i)=> s+='<text x="'+X(i)+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="#7A7D8A">'+d+'</text>');
   [[A,C_PRIMARY],[B,C_ACCENT]].forEach(([arr,col])=>{
     s+='<polyline points="'+arr.map((v,i)=>X(i)+','+Y(v)).join(' ')+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
@@ -925,7 +932,7 @@ function dayBars(data,days){
   const ymax=Math.ceil(mx/step)*step||step;
   const n=(data||[]).length, gap=10, bw=n?(pw-gap*(n-1))/n:pw;
   let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Bar chart of AI calls by day" style="max-width:'+W+'px">';
-  for(let t=0;t<=ymax;t+=step){ const y=pt+ph-(t/ymax)*ph; s+='<line x1="'+pl+'" y1="'+y+'" x2="'+(W-pr)+'" y2="'+y+'" stroke="'+GRID+'"/><text x="'+(pl-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="#7A7D8A">'+fmt(t)+'</text>'; }
+  for(let t=0;t<=ymax;t+=step){ const y=pt+ph-(t/ymax)*ph; s+='<line x1="'+pl+'" y1="'+y+'" x2="'+(W-pr)+'" y2="'+y+'" stroke="'+GRID+'"/><text x="'+(pl-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="#7A7D8A">'+fmtAxis(t)+'</text>'; }
   (data||[]).forEach((val,i)=>{
     const h2=(val/ymax)*ph, x=pl+i*(bw+gap), y=pt+ph-h2;
     s+='<g data-tip="<span class=&quot;tt&quot;>'+esc(days[i]||('Day '+(i+1)))+'</span><br>'+fmt(val)+' calls">'+
