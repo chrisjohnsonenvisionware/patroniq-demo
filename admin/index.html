@@ -1109,8 +1109,13 @@ function libDomain(){
   const e=(STAFF.find(u=>/@/.test(u.email||''))||{}).email||'';
   return e.split('@')[1] || 'pioneerlibrarysystem.org';
 }
+/* ---------- outbound email (SMTP) config — governs staff + patron notifications ---------- */
+const SMTP_KEY='piq_admin_smtp';
+function loadSmtp(){ try{ return JSON.parse(localStorage.getItem(SMTP_KEY)||'null')||{}; }catch(e){ return {}; } }
+function saveSmtp(s){ localStorage.setItem(SMTP_KEY, JSON.stringify(s)); }
 function vUsers(w){
-  w.insertAdjacentHTML('beforeend','<div class="card"><h2>Staff accounts</h2><p class="desc">Local accounts + RBAC now; external identity per connector below (D4). Roles gate both this console and the API. Account emails (invites, password resets, temporary passwords) are sent from <b>no-reply@'+esc(libDomain())+'</b> via the library email connector.</p>'+
+  const _sender=(loadSmtp().fromAddr)||('no-reply@'+libDomain());
+  w.insertAdjacentHTML('beforeend','<div class="card"><h2>Staff accounts</h2><p class="desc">Local accounts + RBAC now; external identity per connector below (D4). Roles gate both this console and the API. Account emails (invites, password resets, temporary passwords) are sent from <b>'+esc(_sender)+'</b> via the SMTP server configured below.</p>'+
     '<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" id="invite">'+ic('plus')+'Invite user</button></div>'+
     '<div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Role</th><th>Scope</th><th>Identity</th><th>Last active</th><th>Manage</th></tr></thead><tbody>'+
     STAFF.map((u,i)=>'<tr><td><b>'+esc(u.name)+'</b><div class="mono">'+esc(u.email)+'</div></td><td>'+esc(u.role)+'</td><td>'+esc(u.branch)+'</td><td>'+esc(u.idp)+'</td><td>'+esc(u.last)+'</td>'+
@@ -1126,6 +1131,32 @@ function vUsers(w){
       ssoCard('Google Workspace','School-district identity',false)+
       ssoCard('Generic OIDC / SAML','Everything else',false)+
     '</div></div>');
+
+  // Email / SMTP — outbound server for staff account mail AND patron notifications.
+  const smtp=loadSmtp(), cfgd=!!(smtp.host&&smtp.fromAddr);
+  w.insertAdjacentHTML('beforeend','<div class="card"><h2>Email &amp; notifications '+(cfgd?'<span class="badge b-pass">SMTP configured</span>':'<span class="badge b-warn">Not configured</span>')+'</h2>'+
+    '<p class="desc">Outbound mail server for <b>all</b> PatronIQ email — staff account mail (invites, password resets, temporary passwords) and patron notifications (holds ready, fees due, event registration). Set per library; EnvisionWare Support can pre-configure it at onboarding.</p>'+
+    '<div class="fgrid">'+
+      f('SMTP host','smtp-host',smtp.host,'text','full')+
+      f('Port','smtp-port',smtp.port||587,'number')+
+      '<div class="f"><label for="smtp-sec">Security</label><select id="smtp-sec">'+
+        ['starttls|STARTTLS (587)','ssl|SSL/TLS (465)','none|None (25)'].map(o=>{const p=o.split('|');return '<option value="'+p[0]+'"'+((smtp.security||'starttls')===p[0]?' selected':'')+'>'+p[1]+'</option>';}).join('')+'</select></div>'+
+      f('Username','smtp-user',smtp.username,'text')+
+      f('Password','smtp-pass',smtp.password,'password')+
+      f('From name','smtp-fromname',smtp.fromName||(D.theme&&D.theme.name)||'Library','text')+
+      f('From address','smtp-fromaddr',smtp.fromAddr||('no-reply@'+libDomain()),'email','full')+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn sm" id="smtpSave">'+ic('check')+'Save settings</button>'+
+      '<button class="btn ghost sm" id="smtpTest">'+ic('send')+'Send test email</button></div></div>');
+  $('#smtpSave').onclick=()=>{ const s={host:$('#smtp-host').value.trim(),port:+$('#smtp-port').value||587,security:$('#smtp-sec').value,username:$('#smtp-user').value.trim(),password:$('#smtp-pass').value,fromName:$('#smtp-fromname').value.trim(),fromAddr:$('#smtp-fromaddr').value.trim()};
+    if(!s.host||!s.fromAddr){ toast('SMTP host and From address are required'); return; }
+    saveSmtp(s); render(); toast('SMTP settings saved — PUT /api/v1/admin/settings/email');
+    if(window.PIQNotes&&PIQNotes.push) PIQNotes.push('Saved SMTP config: '+s.host+':'+s.port+' ('+s.security+') from '+s.fromAddr,'admin · users'); };
+  $('#smtpTest').onclick=()=>{ const s=loadSmtp(); if(!s.host){ toast('Save SMTP settings first'); return; }
+    emailStub(s.fromAddr, 'PatronIQ SMTP test message',
+      'This is a test message from PatronIQ. If you received it, your outbound email server is configured correctly.<br><br>Host <b>'+esc(s.host)+':'+s.port+'</b> · '+esc((s.security||'starttls').toUpperCase())+'.',
+      {note:'Test send routed through the saved SMTP settings (mock) — POST /api/v1/admin/settings/email/test'}); };
+
   $('#invite').onclick=()=>{
     openDlg('Invite user','<div class="fgrid">'+f('Email','inv-email','','email','full')+
       '<div class="f"><label for="inv-role">Role</label><select id="inv-role">'+ROLES.map(r=>'<option>'+r+'</option>').join('')+'</select></div>'+
@@ -1153,16 +1184,21 @@ function genTempPw(){ const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789abcdefghijkmnpqrst
 // library's own domain. Spec: swap for the site's SMTP/Graph/Gmail connector at install.
 function emailStub(to, subject, bodyHtml, opts){
   opts=opts||{};
-  const from='no-reply@'+libDomain();
+  const smtp=loadSmtp();
+  const fromAddr=smtp.fromAddr||('no-reply@'+libDomain());
+  const fromName=smtp.fromName||(D.theme&&D.theme.name)||'Library';
+  const from=fromName+' <'+fromAddr+'>';
+  const via=smtp.host?('sent via '+esc(smtp.host)+':'+(smtp.port||587)+' ('+esc((smtp.security||'starttls').toUpperCase())+')')
+                     :'sent via the library email connector — configure SMTP under Users &amp; SSO';
   openDlg('Library email — outbound (stub)',
     '<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden">'+
     '<div style="background:var(--surface-2,#f4eff9);padding:12px 16px;font-size:13px;border-bottom:1px solid var(--line)">'+
       '<div><b>From:</b> '+esc(from)+'</div><div><b>To:</b> '+esc(to)+'</div><div><b>Subject:</b> '+esc(subject)+'</div></div>'+
     '<div style="padding:16px;font-size:14px;line-height:1.5">'+bodyHtml+
       (opts.cta?'<div style="margin-top:16px"><span style="display:inline-block;background:var(--primary,#67338E);color:#fff;border-radius:8px;padding:10px 16px;font-weight:600">'+esc(opts.cta)+'</span></div>':'')+
-      '<div style="margin-top:18px;color:var(--ink-muted);font-size:12px">'+esc(D.theme&&D.theme.name||'Library')+' · sent via the library email connector</div>'+
+      '<div style="margin-top:18px;color:var(--ink-muted);font-size:12px">'+esc(D.theme&&D.theme.name||'Library')+' · '+via+'</div>'+
     '</div></div>'+
-    '<p class="desc" style="margin-top:12px">'+esc(opts.note||'Email composed (stub). Configure the SMTP/Microsoft 365/Gmail connector under Connections at install.')+'</p>',
+    '<p class="desc" style="margin-top:12px">'+esc(opts.note||'Email composed (stub). Configure the SMTP server under Users & SSO.')+'</p>',
     '<button class="btn" id="mailSend">'+ic('check')+'Send email</button>');
   $('#mailSend').onclick=()=>{ closeDlg(); toast('Email sent to '+to+' (stub)'); if(window.PIQNotes&&PIQNotes.push) PIQNotes.push('Sent account email: "'+subject+'" to '+to,'admin · users'); };
 }

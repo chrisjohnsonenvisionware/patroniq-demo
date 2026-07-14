@@ -120,6 +120,24 @@
   .eventPrev{display:flex;flex-direction:column}
   .linkish{background:none;border:0;color:var(--accent-deep);font:600 15px var(--font);cursor:pointer;text-decoration:underline;padding:10px 2px;min-height:44px}
 
+  /* ============ Sign-in helpers: scan card + recover ============ */
+  .signinAlt{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:14px}
+  .altBtn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px 15px;min-height:44px;
+    border:1px solid var(--line,#e5e0ec);border-radius:12px;background:var(--surface,#fff);cursor:pointer;font:inherit;color:inherit}
+  .altBtn:hover{border-color:var(--accent-deep);background:var(--accent-wash)}
+  .altBtn .ic{width:24px;height:24px;flex:none;color:var(--accent-deep)}
+  .altBtn>span{display:flex;flex-direction:column;line-height:1.3;min-width:0}
+  .altBtn>span b{font-size:15px;font-weight:600}
+  .altBtn>span span{font-size:12.5px;color:var(--ink-muted)}
+  .spinner{width:26px;height:26px;margin:0 auto;border-radius:50%;border:3px solid var(--accent-wash);border-top-color:var(--accent-deep);animation:piqspin .8s linear infinite}
+  @keyframes piqspin{to{transform:rotate(360deg)}}
+  .scanOk{width:34px;height:34px;margin:0 auto;color:#1a7f4b}.scanOk .ic{width:34px;height:34px}
+  .okNote{display:flex;gap:8px;align-items:flex-start;margin-top:12px;padding:12px 14px;border-radius:12px;
+    background:var(--accent-wash);color:var(--accent-deep);font-size:13.5px;line-height:1.45}
+  .okNote .ic{width:20px;height:20px;flex:none;margin-top:1px}
+  .mono{font-family:ui-monospace,Consolas,monospace}
+  .langBtn{width:auto;min-width:36px;padding:0 10px;font:700 12.5px var(--font);letter-spacing:.04em}
+
   /* ============ Kiosk attract hero ============ */
   .kioskHero{display:none}
   body.kiosk .kioskHero{display:grid;grid-template-columns:1.25fr .75fr;gap:26px;align-items:center;
@@ -289,6 +307,7 @@
     </div>
     <div class="chromeActions">
       <span class="clock" id="clock"></span>
+      <button class="iconBtn langBtn" id="langBtn" aria-label="Cambiar a español" title="Español">ES</button>
       <button class="iconBtn" id="gearBtn" aria-label="Settings" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.25"/><path d="M12 2.75v2.5M12 18.75v2.5M2.75 12h2.5M18.75 12h2.5M5.5 5.5l1.75 1.75M16.75 16.75l1.75 1.75M18.5 5.5l-1.75 1.75M7.25 16.75L5.5 18.5"/></svg></button>
     </div>
   </header>
@@ -478,6 +497,7 @@ const IC={
   door:'<path d="M4 21h16"/><path d="M6 21V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21"/><path d="M14.5 12h.01"/>',
   book:'<path d="M12 6.5C10.5 4.8 8.4 4 5.5 4H3v14.5h3c2.6 0 4.6.8 6 2.5 1.4-1.7 3.4-2.5 6-2.5h3V4h-2.5c-2.9 0-5 .8-6.5 2.5Z"/><path d="M12 6.5V21"/>',
   card:'<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/>',
+  camera:'<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.1-1.7A1 1 0 0 1 9.5 4.8h5a1 1 0 0 1 .9.5L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5Z"/><circle cx="12" cy="12.8" r="3.2"/>',
   pin:'<path d="M12 21s-6.5-5.3-6.5-10a6.5 6.5 0 0 1 13 0c0 4.7-6.5 10-6.5 10Z"/><circle cx="12" cy="10.5" r="2.5"/>',
   clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   check:'<path d="M4.5 12.5l5 5L19.5 7"/>',
@@ -879,6 +899,53 @@ function dueBadge(due){
   if(m&&+m[1]<=6)return '<span class="badge b-warn">Due '+esc(due)+'</span>';
   return '<span class="badge b-ok">Due '+esc(due)+'</span>';
 }
+// Snap a photo of the library card → the real product OCRs the number with Claude vision;
+// this mock surfaces a detected number after a brief "reading" beat and fills the sign-in field.
+function scanCardDialog(file){
+  const url=URL.createObjectURL(file);
+  const d=openDialog(
+    '<h2 class="dlgTitle">Scan your library card</h2>'+
+    '<div style="text-align:center">'+
+      '<img src="'+url+'" alt="Photo of your library card" style="max-width:100%;max-height:180px;border-radius:12px;object-fit:cover;border:1px solid var(--line,#e5e0ec)">'+
+      '<div id="scanState" style="margin-top:14px">'+
+        '<div class="spinner"></div>'+
+        '<p style="font-weight:600;margin:8px 0 2px">Reading your card with AI…</p>'+
+        '<p class="hint" style="margin:0">Finding your card number in the photo.</p>'+
+      '</div></div>'+
+    '<div class="dlgActions"><button class="btn ghost" data-x>Cancel</button></div>',
+    {label:'Scan library card', onClose:()=>URL.revokeObjectURL(url)});
+  d.el.querySelector('[data-x]').onclick=()=>d.close();
+  setTimeout(()=>{
+    const st=d.el.querySelector('#scanState'); if(!st)return;
+    const guess=((D.patrons.find(p=>p.checkouts.length)||D.patrons[0]||{}).id)||'21000012345678';
+    st.innerHTML='<div class="scanOk">'+ic('check')+'</div>'+
+      '<p style="font-weight:600;margin:8px 0 2px">Card number detected</p>'+
+      '<p class="mono" style="font-size:18px;margin:0 0 2px">'+esc(guess)+'</p>'+
+      '<p class="hint" style="margin:0">Enter your PIN to finish signing in.</p>';
+    const acts=d.el.querySelector('.dlgActions');
+    acts.innerHTML='<button class="btn ghost" data-retake>Retake</button><button class="btn" id="scanUse" autofocus>Use this number</button>';
+    acts.querySelector('[data-retake]').onclick=()=>{ d.close(); $('#cardPhoto').click(); };
+    d.el.querySelector('#scanUse').onclick=()=>{ const c=$('#cardNum'); if(c)c.value=guess; d.close(); const pin=$('#pinNum'); if(pin)pin.focus(); announce('Card number filled from photo — enter your PIN'); };
+  }, 1500);
+}
+// "Forgot card number / PIN" — sends the card number + a PIN-reset link to the contact on file.
+function recoverCardDialog(){
+  const d=openDialog(
+    '<h2 class="dlgTitle">Recover your card &amp; PIN</h2>'+
+    '<p class="hint" style="margin-top:0">Enter the email or mobile number on your library account. We’ll send your card number and a link to reset your PIN.</p>'+
+    '<div class="field"><label for="recTo">Email or mobile number</label><input id="recTo" autocomplete="off" autofocus></div>'+
+    '<div id="recDone"></div>'+
+    '<div class="dlgActions"><button class="btn ghost" data-x>Close</button><button class="btn" id="recSend">Send it to me</button></div>',
+    {label:'Recover card and PIN'});
+  d.el.querySelector('[data-x]').onclick=()=>d.close();
+  d.el.querySelector('#recSend').onclick=()=>{
+    const inp=d.el.querySelector('#recTo'), v=(inp.value||'').trim();
+    if(!v){ inp.focus(); return; }
+    const via=/@/.test(v)?'email':'text message';
+    d.el.querySelector('#recDone').innerHTML='<div class="okNote">'+ic('check')+'<span>If an account matches <b>'+esc(v)+'</b>, we just sent your library card number and a PIN reset link by '+via+'. It can take a minute to arrive.</span></div>';
+    d.el.querySelector('#recSend').remove(); inp.disabled=true; announce('Recovery '+via+' sent');
+  };
+}
 function viewAccount(){
   const P=state.patron;
   if(!P){
@@ -889,11 +956,19 @@ function viewAccount(){
       '<div class="field"><label for="pinNum">PIN</label><input id="pinNum" type="password" autocomplete="off" aria-describedby="loginErr"></div>'+
       '<div class="formErr" id="loginErr" role="alert"></div>'+
       '<button class="btn" type="submit" style="width:100%;margin-top:16px">Sign in</button></form>'+
+      '<div class="signinAlt">'+
+        '<button class="altBtn" type="button" id="scanCard">'+ic('camera')+'<span><b>Scan your library card</b><span>Use your camera — we read the number for you</span></span></button>'+
+        '<button class="linkish" type="button" id="recoverCard">Forgot your card number or PIN?</button>'+
+      '</div>'+
+      '<input id="cardPhoto" type="file" accept="image/*" capture="environment" style="display:none">'+
       '<div class="chips">'+D.patrons.map((p,i)=>'<button class="chip" type="button" data-hint="'+i+'">Demo: '+esc(p.name)+(p.checkouts.length?'':' (new card)')+'</button>').join('')+'</div>'+
       '<p class="hint">Demo cards fill the form — this mock talks to a simulated ILS via SIP2.</p></div>'+
       '<h2>Good to know</h2>'+guides();
     document.querySelectorAll('[data-hint]').forEach(b=>b.onclick=()=>{
       const p=D.patrons[+b.dataset.hint];$('#cardNum').value=p.id;$('#pinNum').value=p.pin;$('#pinNum').focus();});
+    $('#scanCard').onclick=()=>$('#cardPhoto').click();
+    $('#cardPhoto').onchange=e=>{ const file=e.target.files&&e.target.files[0]; if(file) scanCardDialog(file); e.target.value=''; };
+    $('#recoverCard').onclick=recoverCardDialog;
     $('#loginForm').onsubmit=e=>{
       e.preventDefault();
       const p=D.patrons.find(x=>x.id===$('#cardNum').value.trim()&&x.pin===$('#pinNum').value.trim());
@@ -1288,7 +1363,81 @@ function tick(){
 if(KIOSK){tick();setInterval(tick,30000);}
 $('#brandName').textContent=D.theme.shortName;
 paintNotes();
+
+/* ============ Language: English ⇄ Spanish =============================
+   Curated EN→ES dictionary + a MutationObserver that translates text nodes,
+   placeholders, aria-labels and titles as they render. The English original is
+   stashed on each node so flipping back to English is lossless. Proper nouns
+   (library name, event titles, patron names) and generated numbers are left as-is. */
+const LANG_KEY='piq_lang';
+let LANG=(function(){ try{ return localStorage.getItem(LANG_KEY)||'en'; }catch(e){ return 'en'; } })();
+const ES={
+  'Home':'Inicio','Ask':'Preguntar','Account':'Mi cuenta','Events':'Eventos','Rooms':'Salas',
+  'Skip to content':'Saltar al contenido','Powered by EnvisionWare':'Con la tecnología de EnvisionWare',
+  'Good morning.':'Buenos días.','Good afternoon.':'Buenas tardes.','Good evening.':'Buenas noches.',
+  'Ask the library anything…':'Pregúntale lo que sea a la biblioteca…',
+  'Services':'Servicios','Today at your library':'Hoy en tu biblioteca','See all events':'Ver todos los eventos',
+  'Find something':'Buscar algo','Directions to holds, rooms, restrooms & more':'Cómo llegar a reservas, salas, baños y más',
+  'Find something in the library':'Buscar algo en la biblioteca',
+  'Where do I pick up holds?':'¿Dónde recojo mis reservas?','Book a study room':'Reservar una sala de estudio',
+  'Sign me up for yoga tonight':'Inscríbeme en yoga esta noche','Do I owe any fines?':'¿Tengo multas pendientes?',
+  'Is there storytime today?':'¿Hay hora del cuento hoy?','I need to print my resume':'Necesito imprimir mi currículum',
+  'Use a computer':'Usar una computadora','Reserve a session at any branch':'Reserva una sesión en cualquier sucursal',
+  'Print & copy':'Imprimir y copiar','From your phone — B&W $0.10, color $0.50':'Desde tu teléfono — B/N $0.10, color $0.50',
+  'Reserve a room':'Reservar una sala','Study rooms to community rooms':'Desde salas de estudio hasta salas comunitarias',
+  'Checkouts & holds':'Préstamos y reservas','Your items, renewals, hold pickup':'Tus materiales, renovaciones y recogida de reservas',
+  'Pay a fee':'Pagar una tarifa','Card, Google Pay, Apple Pay, Cash App':'Tarjeta, Google Pay, Apple Pay, Cash App',
+  'Ask the library':'Pregúntale a la biblioteca','Attend something':'Asiste a algo',
+  'Pick an open time — booking takes one tap and your card.':'Elige un horario disponible — reservar toma un toque y tu tarjeta.',
+  'My account':'Mi cuenta','Good to know':'Información útil','Sign in':'Iniciar sesión',
+  'Sign in with your library card to see checkouts, holds, and fees.':'Inicia sesión con tu tarjeta de biblioteca para ver préstamos, reservas y tarifas.',
+  'Library card number':'Número de tarjeta',
+  'Scan your library card':'Escanea tu tarjeta','Use your camera — we read the number for you':'Usa tu cámara — leemos el número por ti',
+  'Forgot your card number or PIN?':'¿Olvidaste tu número de tarjeta o PIN?',
+  'Reading your card with AI…':'Leyendo tu tarjeta con IA…','Finding your card number in the photo.':'Buscando tu número de tarjeta en la foto.',
+  'Card number detected':'Número de tarjeta detectado','Enter your PIN to finish signing in.':'Ingresa tu PIN para terminar de iniciar sesión.',
+  'Use this number':'Usar este número','Retake':'Volver a tomar','Cancel':'Cancelar','Close':'Cerrar',
+  'Recover your card & PIN':'Recupera tu tarjeta y PIN',
+  'Enter the email or mobile number on your library account. We’ll send your card number and a link to reset your PIN.':'Ingresa el correo o número de celular de tu cuenta. Te enviaremos tu número de tarjeta y un enlace para restablecer tu PIN.',
+  'Email or mobile number':'Correo o número de celular','Send it to me':'Envíamelo'
+};
+function _trText(t){
+  if(t.parentNode&&/^(SCRIPT|STYLE)$/.test(t.parentNode.nodeName))return;
+  const raw=t.nodeValue, key=raw.trim();
+  if(key&&ES[key]){ if(t.__en==null)t.__en=raw; t.nodeValue=raw.replace(key,ES[key]); }
+}
+function _trAttr(el,a){ const v=el.getAttribute&&el.getAttribute(a); if(v==null)return;
+  const key=v.trim(); if(ES[key]){ const dk='__en_'+a; if(el[dk]==null)el[dk]=v; el.setAttribute(a,ES[key]); } }
+function _walk(root,fn){ const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); const ns=[]; let n; while(n=w.nextNode())ns.push(n); ns.forEach(fn); }
+function translateTree(root){ if(LANG!=='es'||!root)return;
+  if(root.nodeType===3){ _trText(root); return; }
+  _walk(root,_trText);
+  if(root.querySelectorAll)root.querySelectorAll('[placeholder],[aria-label],[title]').forEach(el=>{ _trAttr(el,'placeholder'); _trAttr(el,'aria-label'); _trAttr(el,'title'); });
+}
+function restoreTree(root){ if(!root)return;
+  _walk(root,t=>{ if(t.__en!=null){ t.nodeValue=t.__en; t.__en=null; } });
+  if(root.querySelectorAll)root.querySelectorAll('[placeholder],[aria-label],[title]').forEach(el=>{
+    ['placeholder','aria-label','title'].forEach(a=>{ const dk='__en_'+a; if(el[dk]!=null){ el.setAttribute(a,el[dk]); el[dk]=null; } }); });
+}
+const _langObs=new MutationObserver(muts=>{ if(LANG!=='es')return;
+  for(const m of muts){
+    if(m.type==='characterData'){ _trText(m.target); }
+    else m.addedNodes.forEach(nd=>{ if(nd.nodeType===1)translateTree(nd); else if(nd.nodeType===3)_trText(nd); });
+  }
+});
+function updateLangBtn(){ const b=$('#langBtn'); if(!b)return;
+  b.textContent=LANG==='es'?'EN':'ES';
+  b.setAttribute('aria-label',LANG==='es'?'Switch to English':'Cambiar a español');
+  b.title=LANG==='es'?'English':'Español'; }
+function setLang(l){ LANG=l; try{ localStorage.setItem(LANG_KEY,l); }catch(e){}
+  document.documentElement.lang=l;
+  if(l==='es')translateTree(document.body); else restoreTree(document.body);
+  updateLangBtn(); }
+$('#langBtn').onclick=()=>setLang(LANG==='es'?'en':'es');
+
 nav('home');
+_langObs.observe(document.body,{subtree:true,childList:true,characterData:true});
+setLang(LANG);
 // PWA: register the scoped service worker so the patron app is installable (Add to Home Screen).
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 </script>
