@@ -818,6 +818,7 @@ function paintThread(){
    ===================================================================== */
 const QUICK=['Where do I pick up holds?','Book a study room','Sign me up for yoga tonight','Do I owe any fines?','Is there storytime today?','I need to print my resume'];
 const MODULE_TILES={
+  wayfind:{icon:'pin',t:'Find something',d:'Directions to holds, rooms, restrooms & more',go:()=>openWayfindDialog()},
   pcres:{icon:'monitor',t:'Use a computer',d:'Reserve a session at any branch',go:()=>submit('Reserve a computer for me')},
   print:{icon:'printer',t:'Print & copy',d:'From your phone — B&W $0.10, color $0.50',go:()=>submit('I need to print')},
   rooms:{icon:'door',t:'Reserve a room',d:'Study rooms to community rooms',go:()=>nav('rooms')},
@@ -837,11 +838,10 @@ function viewHome(){
       '<div class="capsub">'+esc(appUrl())+'</div></div></section>'):'';
   const h1=KIOSK?'<h2 style="margin-top:0">'+greeting()+' — how can we help?</h2>'
                :'<h1>'+greeting()+'.</h1><p class="sub">Welcome to '+esc(D.library.name)+' — '+esc(D.theme.tagline.toLowerCase())+'</p>';
-  const tiles=D.modules.enabled.map(m=>{
-    const t=MODULE_TILES[m.key];
-    if(!t)return '';
-    return '<button class="tile" data-tile="'+esc(m.key)+'">'+ic(t.icon)+'<span class="tt">'+esc(t.t)+'</span><span class="td">'+esc(t.d)+'</span></button>';
-  }).join('');
+  const tileFor=key=>{const t=MODULE_TILES[key];if(!t)return '';
+    return '<button class="tile" data-tile="'+esc(key)+'">'+ic(t.icon)+'<span class="tt">'+esc(t.t)+'</span><span class="td">'+esc(t.d)+'</span></button>';};
+  // Wayfinding leads the Services grid — it's a first-class quick service (no module gate).
+  const tiles=tileFor('wayfind')+D.modules.enabled.map(m=>tileFor(m.key)).join('');
   const evPrev=D.events.slice(0,3).map(e=>
     '<div class="rowline"><div><div class="t">'+esc(e.title)+'</div><div class="d">'+esc(e.time)+' · '+esc(e.branch)+(e.registration==='required'?' · registration required':'')+'</div></div>'+
     '<span class="badge '+(e.registration==='required'?'b-warn':'b-ok')+'">'+(e.registration==='required'?(e.seatsLeft+' seats'):'Drop-in')+'</span></div>').join('');
@@ -849,13 +849,11 @@ function viewHome(){
     '<form class="askForm" id="askForm"><label class="sr-only" for="askIn">Ask the library anything</label>'+
     '<input id="askIn" placeholder="Ask the library anything…" autocomplete="off">'+
     '<button class="btn" type="submit" aria-label="Ask">'+ic('send')+'</button></form>'+
-    '<button class="wayfindCta" id="wayfindCta">'+ic('pin')+'<span class="wt"><b>Find something in the library</b><span>Directions to holds, study rooms, restrooms &amp; more</span></span></button>'+
     '<div class="chips">'+QUICK.map(q=>'<button class="chip" data-say="'+esc(q)+'">'+esc(q)+'</button>').join('')+'</div>'+
     '<h2>Services</h2><div class="tiles">'+tiles+'</div>'+
     '<h2>Today at your library</h2><div class="card eventPrev">'+evPrev+
     '<button class="linkish" data-go="events">See all events</button></div>';
   $('#askForm').onsubmit=e=>{e.preventDefault();const v=$('#askIn').value;if(v.trim())submit(v);};
-  $('#wayfindCta').onclick=openWayfindDialog;
   document.querySelectorAll('[data-say]').forEach(b=>b.onclick=()=>submit(b.dataset.say));
   document.querySelectorAll('[data-tile]').forEach(b=>b.onclick=()=>MODULE_TILES[b.dataset.tile].go());
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>nav(b.dataset.go));

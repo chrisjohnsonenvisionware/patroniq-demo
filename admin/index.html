@@ -732,7 +732,7 @@ function kbDialog(insight){
 
 /* ---------- 4. CONTENT (R13) ---------- */
 function vContent(w){
-  const tabs=[['events','Events'],['rooms','Rooms'],['services','Services'],['kb','Knowledge Base'],['wayfinding','Wayfinding']];
+  const tabs=[['events','Events'],['rooms','Rooms'],['services','Services'],['kb','Knowledge Base']];
   w.insertAdjacentHTML('beforeend','<div class="tabs2">'+tabs.map(t=>'<button class="tab2'+(contentTab===t[0]?' active':'')+'" data-t="'+t[0]+'">'+t[1]+'</button>').join('')+'</div><div id="tabBody"></div>');
   w.querySelectorAll('.tab2').forEach(b=>b.onclick=()=>{ contentTab=b.dataset.t; render(); });
   const b=$('#tabBody');
@@ -740,7 +740,7 @@ function vContent(w){
   if(contentTab==='rooms') return tabRooms(b);
   if(contentTab==='services') return tabServices(b);
   if(contentTab==='kb') return tabKb(b);
-  return tabWayfinding(b);
+  return tabEvents(b);
 }
 function tabEvents(b){
   const c=document.createElement('div'); c.className='card';
@@ -841,13 +841,6 @@ function kbUpload(file){
     saveKb(); render(); toast('Image added with caption — grounds the concierge');
   } else { toast('Unsupported file type — use .md, .txt, .pdf, or an image'); }
 }
-function tabWayfinding(b){
-  b.insertAdjacentHTML('beforeend','<div class="card"><h2>Wayfinding</h2><p class="desc">Destinations the concierge can route to; directions are branch-templated.</p>'+
-    '<div style="overflow-x:auto"><table><thead><tr><th>ID</th><th>Label</th><th>Directions</th><th></th></tr></thead><tbody>'+
-    (D.wayfinding||[]).map(x=>'<tr><td class="mono">'+esc(x.id)+'</td><td><b>'+esc(x.label)+'</b></td><td style="max-width:380px">'+esc(x.directions)+'</td>'+
-    '<td><button class="iconbtn" data-mockedit="'+esc(x.label)+'" aria-label="Edit '+esc(x.label)+'">'+ic('pencil')+'</button></td></tr>').join('')+'</tbody></table></div></div>');
-  wireMockEdit(b);
-}
 function wireMockEdit(b){
   b.querySelectorAll('[data-mockedit]').forEach(x=>x.onclick=()=>{
     openDlg('Edit — '+x.dataset.mockedit,'<p style="font-size:13.5px;color:var(--ink-muted);margin:0 0 12px">Full CRUD ships in the admin build (content/* endpoints). In this mock, saving shows the flow only.</p><div class="f"><label>Sample field</label><input type="text" value="'+esc(x.dataset.mockedit)+'"></div>',
@@ -921,7 +914,11 @@ function wayfindingDialog(idx){
 function dayBars(data,days){
   const W=560,H=170,pl=38,pr=10,pt=10,pb=26, pw=W-pl-pr, ph=H-pt-pb;
   const mx=Math.max.apply(null,(data||[]).concat([1]));
-  const step=mx>800?400:(mx>200?200:100); const ymax=Math.ceil(mx/step)*step||step;
+  // "Nice" Y-axis step scaled to the data magnitude → ~4-5 ticks at any range
+  // (week hundreds → all-time hundreds of thousands). A fixed step garbled the axis.
+  const raw=mx/4, mag=Math.pow(10,Math.floor(Math.log10(raw))), norm=raw/mag;
+  const step=Math.max(1,(norm<=1?1:norm<=2?2:norm<=5?5:10)*mag);
+  const ymax=Math.ceil(mx/step)*step||step;
   const n=(data||[]).length, gap=10, bw=n?(pw-gap*(n-1))/n:pw;
   let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Bar chart of AI calls by day" style="max-width:'+W+'px">';
   for(let t=0;t<=ymax;t+=step){ const y=pt+ph-(t/ymax)*ph; s+='<line x1="'+pl+'" y1="'+y+'" x2="'+(W-pr)+'" y2="'+y+'" stroke="'+GRID+'"/><text x="'+(pl-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="11" fill="#7A7D8A">'+fmt(t)+'</text>'; }
